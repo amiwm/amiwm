@@ -1,3 +1,4 @@
+%option noyywrap
 %{
 #include <X11/Xmu/CharSet.h>
 #include <string.h>
@@ -139,9 +140,6 @@ int parse_keyword(char *str, YYSTYPE *val)
                           progname, yytext); }
 %%
 
-#ifndef yywrap
-int yywrap() { return 1; }
-#endif
 #undef input
 #define input() ((*inptr)?(*inptr++):0)
 #undef unput
