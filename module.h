@@ -14,6 +14,8 @@
 #define MCMD_GETICONDIR 16
 #define MCMD_GETICONPALETTE 17
 #define MCMD_MANAGEMENU 18
+#define MCMD_ROTATE_WINDOW_RAISE 19
+#define MCMD_ROTATE_WINDOW_LOWER 20
 
 struct mcmd_header {
   XID id;
