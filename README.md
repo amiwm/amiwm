@@ -1,6 +1,12 @@
 # amiwm
 Amiga Workbench inspired window manager for Xorg.
 
+## Upstream repository
+
+The current upstream repository for this particular fork is at
+[https://github.com/amiwm/amiwm](https://github.com/amiwm/amiwm).
+Please file tickets, pull requests, etc there.
+
 ## Getting started
 Before compiling, make sure that you have following packages installed:
 
@@ -45,7 +51,11 @@ Contributions by
 * redsPL.
 
 ## Previous repositories
+
 Previously, amiwm was using bzr instead of git; The bzr repository can be found [here](http://mc.pp.se/bzr/amiwm/)
+
+This repository started as a fork from [https://github.com/sdomi/amiwm](https://github.com/sdomi/amiwm).
+
 ## License
 This project is published under a custom license - see [LICENSE.md](LICENSE.md) for details.
 
