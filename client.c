@@ -331,7 +331,7 @@ void flushclients()
   Scrn *scr2;
 #endif
 
-  if((scr = front)) do {
+  if((scr = get_front_scr())) do {
     scr = scr->upfront;
     XQueryTree(dpy, scr->back, &dw1, &dw2, &wins, &nwins);
     for(i=0; i<nwins; i++)
@@ -367,7 +367,7 @@ void flushclients()
       }
       */
     XFree((void *) wins);
-  } while(scr!=front);
+  } while( scr!= get_front_scr());
   while((c=clients)) {
     if(c->parent != c->scr->root) {
       int x,y;

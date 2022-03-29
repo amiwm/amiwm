@@ -398,7 +398,7 @@ Icon *createappicon(struct module *m, Window p, char *name,
     scr=c->scr;
   } else
     if(XFindContext(dpy, p, screen_context, (XPointer*)&scr))
-      scr=front;
+      scr = get_front_scr();
   if(p==scr->root) p=scr->back;
 
   i->scr=scr;

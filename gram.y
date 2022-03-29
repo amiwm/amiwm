@@ -103,8 +103,8 @@ stmt		: error
 		| SCREEN string { openscreen($2,DefaultRootWindow(dpy)); }
 		| SCREEN NUMBER string { if(($2==DefaultScreen(dpy)||prefs.manage_all) && $2<ScreenCount(dpy)) openscreen($3,RootWindow(dpy,$2)); }
 		| MODULEPATH string { prefs.module_path = $2; }
-		| MODULE string STRING { create_module((front? front->upfront:NULL), $2, $3); }
-		| MODULE string { create_module((front? front->upfront:NULL), $2, NULL); }
+		| MODULE string STRING { create_module((get_front_scr() ? get_front_scr()->upfront:NULL), $2, $3); }
+		| MODULE string { create_module((get_front_scr() ? get_front_scr()->upfront:NULL), $2, NULL); }
 		| INTERSCREENGAP NUMBER { prefs.borderwidth=$2; }
 		| AUTORAISE truth { prefs.autoraise=$2; }
 		| OPAQUEMOVE truth { prefs.opaquemove=$2; }

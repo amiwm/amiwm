@@ -23,7 +23,23 @@ extern XContext screen_context, client_context, vroot_context;
 extern void createmenubar();
 extern void reparent(Client *);
 
-Scrn *front = NULL, *scr = NULL;
+static Scrn *_front = NULL;
+Scrn *scr = NULL;
+
+/*
+ * Accessor methods to get and set the 'front' screen.
+ */
+Scrn *
+get_front_scr(void)
+{
+  return _front;
+}
+
+void
+set_front_scr(Scrn *s)
+{
+  _front = s;
+}
 
 static Scrn *getvroot(Window root)
 {
@@ -58,29 +74,29 @@ void screentoback(void)
 {
   Scrn *f;
   if((!scr)||(scr->back==scr->root)) return;
-  if(scr==front) {
+  if(scr == get_front_scr()) {
     XLowerWindow(dpy, scr->back);
-    front=scr->behind;
+    set_front_scr(scr->behind);
   } else if(scr==getscreenbyroot(scr->root)) {
     XLowerWindow(dpy, scr->back);
     scr->upfront->behind=scr->behind;
     scr->behind->upfront=scr->upfront;
-    scr->upfront=front->upfront;
-    scr->behind=front;
-    front->upfront->behind=scr;
-    front->upfront=scr;
-  } else if(scr->behind==front) {
+    scr->upfront = get_front_scr()->upfront;
+    scr->behind = get_front_scr();
+    get_front_scr()->upfront->behind=scr;
+    get_front_scr()->upfront=scr;
+  } else if(scr->behind == get_front_scr()) {
     XRaiseWindow(dpy, scr->back);
-    front=scr;
+    set_front_scr(scr);
   } else {
     XRaiseWindow(dpy, scr->back);
     scr->upfront->behind=scr->behind;
     scr->behind->upfront=scr->upfront;
-    scr->upfront=front->upfront;
-    scr->behind=front;
-    front->upfront->behind=scr;
-    front->upfront=scr;
-    front=scr;
+    scr->upfront = get_front_scr()->upfront;
+    scr->behind = get_front_scr();
+    get_front_scr()->upfront->behind=scr;
+    get_front_scr()->upfront=scr;
+    set_front_scr(scr);
   }
   if((f = getscreenbyroot(scr->root))) {
     init_dri(&f->dri, dpy, f->root, f->cmap, True);
@@ -181,8 +197,8 @@ void closescreen(void)
   term_dri(&scr->dri, dpy, scr->cmap);
   if(scr->iconcolorsallocated)
     XFreeColors(dpy, scr->cmap, scr->iconcolor, scr->iconcolorsallocated, 0);
-  if(front==scr)
-    front=scr->behind;
+  if(get_front_scr()==scr)
+    set_front_scr(scr->behind);
   dummy=scr->behind;
   free(scr);
   scr=dummy;
@@ -292,14 +308,14 @@ Scrn *openscreen(char *deftitle, Window root)
   s->default_tool_pm_w=0;
   s->default_tool_pm_h=0;
 
-  if(front) {
-    s->behind=front;
-    s->upfront=front->upfront;
-    front->upfront->behind=s;
-    front->upfront=s;
+  if(get_front_scr()) {
+    s->behind = get_front_scr();
+    s->upfront = get_front_scr()->upfront;
+    get_front_scr()->upfront->behind=s;
+    get_front_scr()->upfront=s;
   } else {
     s->behind = s->upfront = s;
-    front = s;
+    set_front_scr(s);
   }
 
   scr=s;
@@ -309,7 +325,7 @@ Scrn *openscreen(char *deftitle, Window root)
 
 void realizescreens(void)
 {
-  scr = front;
+  scr = get_front_scr();
 
   do {
     if(!scr->realized) {
@@ -347,7 +363,7 @@ void realizescreens(void)
       XMapWindow(dpy, scr->back);
     }
     scr=scr->behind;
-  } while(scr!=front);
+  } while(scr != get_front_scr());
   do {  
     if(!scr->realized) {
       scanwins();
@@ -358,29 +374,29 @@ void realizescreens(void)
       scr->realized=1;
     }
     scr=scr->behind;
-  } while(scr!=front);
+  } while(scr != get_front_scr());
 }
 
 Scrn *getscreen(Window w)
 {
-  Scrn *s=front;
+  Scrn *s = get_front_scr();
   if(w && s)
     do {
       if(s->back == w || s->root == w)
 	return s;
       s=s->behind;
-    } while(s!=front);
-  return front;
+    } while(s != get_front_scr());
+  return get_front_scr();
 }
 
 Scrn *getscreenbyroot(Window w)
 {
-  Scrn *s=front;
+  Scrn *s = get_front_scr();
   if(s)
     do {
       if(s->root == w)
 	return s;
       s=s->behind;
-    } while(s!=front);
+    } while(s != get_front_scr());
   return NULL;
 }

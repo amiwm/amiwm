@@ -805,7 +805,7 @@ void menuaction(struct Item *i, struct Item *si)
     if(item==0) {
       openscreen("New Screen", DefaultRootWindow(dpy));
       realizescreens();
-      scr=front->upfront;
+      scr = get_front_scr()->upfront;
       screentoback();
     }
     if(item==1) {
