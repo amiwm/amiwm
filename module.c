@@ -111,7 +111,7 @@ void delete_keygrab(struct module *m, int id)
 
 static void destroy_module(struct module *m)
 {
-  Scrn *s=front;
+  Scrn *s = get_front_scr();
   delete_keygrab(m, -1);
   do {
     Icon *i, *ni;
@@ -121,7 +121,7 @@ static void destroy_module(struct module *m)
 	rmicon(i);
     }
     s=s->behind;
-  } while(s!=front);
+  } while(s != get_front_scr());
   disown_item_chain(m, m->menuitems);
   if(m->in_fd>=0) { remove_fd_from_set(m->in_fd); close(m->in_fd); }
   if(m->out_fd>=0) { close(m->out_fd); }

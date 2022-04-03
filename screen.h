@@ -37,7 +37,10 @@ typedef struct _Scrn {
   unsigned long iconcolor[256];
 } Scrn;
 
-extern Scrn *scr, *front;
+extern Scrn *scr;
+
+Scrn * get_front_scr(void);
+void set_front_scr(Scrn *s);
 
 extern void closescreen();
 extern Scrn * openscreen(char *, Window);

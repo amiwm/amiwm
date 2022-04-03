@@ -540,11 +540,11 @@ void endicondragging(XEvent *e)
   int wx, wy;
   Window ch;
 
-  scr=front;
+  scr=get_front_scr();
   for(;;) {
     if(scr->root == e->xbutton.root && e->xbutton.y_root>=scr->y)
       break;
-    if((scr=scr->behind)==front) {
+    if((scr=scr->behind)==get_front_scr()) {
       badicondrop();
       return;
     }
@@ -823,11 +823,11 @@ static void update_clock(void *dontcare)
   if(server_grabs)
     return;
   call_out(prefs.titleclockinterval, 0, update_clock, dontcare);
-  scr = front;
+  scr = get_front_scr();
   do {
     redrawmenubar(scr->menubar);
     scr=scr->behind;
-  } while(scr!=front);
+  } while(scr != get_front_scr());
 }
 
 void cleanup()
@@ -836,7 +836,7 @@ void cleanup()
   struct coevent *e;
   flushmodules();
   flushclients();
-  scr=front;
+  scr = get_front_scr();
   while(scr)
     closescreen();
   free_prefs();
@@ -981,7 +981,7 @@ int main(int argc, char *argv[])
 	c = NULL;
 	if(XFindContext(dpy, event.xany.window, screen_context,
 			(XPointer*)&scr))
-	  scr=front;
+	  scr = get_front_scr();
       }
       if(XFindContext(dpy, event.xany.window, icon_context, (XPointer*)&i))
 	i=NULL;
@@ -1011,7 +1011,7 @@ int main(int argc, char *argv[])
 
 	if(!event.xcreatewindow.override_redirect) {
 	  if(!(scr=getscreenbyroot(event.xcreatewindow.parent)))
-	    scr=front;
+	    scr = get_front_scr();
 	  createclient(event.xcreatewindow.window);
 	}
 #ifdef ASSIMILATE_WINDOWS
@@ -1178,7 +1178,7 @@ int main(int argc, char *argv[])
       case MapRequest:
 	if(XFindContext(dpy, event.xmaprequest.window, client_context, (XPointer*)&c)) {
 	  if(!(scr=getscreenbyroot(event.xmaprequest.parent)))
-	    scr=front;
+	    scr = get_front_scr();
 	  c=createclient(event.xmaprequest.window);
 	}
 	{
