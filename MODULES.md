@@ -35,10 +35,12 @@ image, but repeated.
 ## Keyboard module
 
 With the Keyboard module, you can bind window manager functions to keys
-on the keyboard. The initstring should consist of keybindings on the
-form
+on the keyboard. The initstring should consist of one or more keybindings
+on the form
 
 modifiers<keysym>:where:func
+
+Multiple keybindings are specified with spaces between them.
 
 ### modifiers
 
@@ -46,6 +48,10 @@ Modifiers is 0 or more of:
   Shift Control Meta Lock
   Mod1 Mod2 Mod3 Mod4 Mod5
   Button1 Button2 Button3 Button4 Button5
+
+Modifiers are joined together using spaces.  This can be confusing
+as it looks like keybindings are specified with spaces between them
+but the parser actually handles this.
 
 The modifiers listed must be pressed together with the key to activate
 the binding.
@@ -67,6 +73,8 @@ The function to perform when the key is pressed.
 Currently the following are defined:
 
 rotatescreens  -  Move the frontmost screen to the back
+raisewindow    -  Rotate the bottom window to the top of the screen
+lowerwindow    -  Rotate the top window to the bottom of the screen
 front          -  Move the window in which the key is pressed to the front
 back           -  Move the window in which the key is pressed to the back
 iconify        -  Iconify the window in which the key is pressed
@@ -83,6 +91,13 @@ This binds the keys Meta-F1, Meta-F2 and Meta-F3 to front, back and
 iconify respectively.  The will only have effect inside windows and in
 window frames.  (These are the only places that front/iconfy/back has
 effect anyway.)
+
+An example with multiple modifiers in a single keybinding.
+
+Module "Keyboard" \
+	Meta<M>:all:rotatewindows\
+	Meta<Tab>:all:raisescreen\
+	Control Meta<Tab>:all:lowerscreen"
 
 ## Filesystem module
 

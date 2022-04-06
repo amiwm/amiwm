@@ -41,6 +41,8 @@ int parse_keyword(char *str, YYSTYPE *val)
      { "back", (mdfuncp)md_back },
      { "front", (mdfuncp)md_front },
      { "iconify", (mdfuncp)md_iconify },
+     { "lowerwindow", (mdfuncp)md_rotate_window_lower },
+     { "raisewindow", (mdfuncp)md_rotate_window_raise },
      { "rotatescreens", (mdfuncp)k_rotscreens },
    };
 #define N_FUNC (sizeof(functab)/sizeof(functab[0]))
