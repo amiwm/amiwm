@@ -13,30 +13,33 @@
 extern struct Library *XLibBase;
 #endif
 
+// These are used for button spacing, not the button itself
 #define BUT_BUTSPACE (2*(2+5))
 #define BUT_INTSPACE 12
 #define BUT_EXTSPACE 4
-#define BUT_VSPACE   6
-#define TXT_HSPACE   48
-#define TXT_TOPSPACE 4
-#define TXT_MIDSPACE 3
-#define TXT_BOTSPACE 4
+
+#include "gadget_button.h"
+#include "gadget_textbox.h"
 
 struct choice {
-  struct choice *next;
-  const char *text;
-  int l, w;
-  Window win;
+	struct choice *next;
+	const char *text;
+	int l, w;
+	struct gadget_button *b;
 } *firstchoice=NULL, *lastchoice=NULL;
 
 struct line {
-  struct line *next;
-  const char *text;
-  int l, w, h;
+	struct line *next;
+	const char *text;
+	int l, w, h;
 } *firstline=NULL, *lastline=NULL;
 
 Display *dpy;
-Window root, mainwin, textwin;
+Window root, mainwin;
+
+//Window textwin;
+struct gadget_textbox *g_textbox;
+
 char *progname;
 GC gc;
 Pixmap stipple;
@@ -49,43 +52,59 @@ struct DrawInfo dri;
 
 struct RDArgs *ra=NULL;
 
-void selection(int n)
+static void
+selection(int n)
 {
-  printf("%d\n", n);
-  XDestroyWindow(dpy, mainwin);
-  XCloseDisplay(dpy);
-  FreeArgs(ra);
-  exit(0);
+	printf("%d\n", n);
+	XDestroyWindow(dpy, mainwin);
+	XCloseDisplay(dpy);
+	FreeArgs(ra);
+	exit(0);
 }
 
-void *myalloc(size_t s)
+static void
+*myalloc(size_t s)
 {
-  void *p=calloc(s,1);
-  if(p)
-    return p;
-  fprintf(stderr, "%s: out of memory!\n", progname);
-  FreeArgs(ra);
-  exit(1);
+	void *p=calloc(s,1);
+	if(p)
+		return p;
+	fprintf(stderr, "%s: out of memory!\n", progname);
+	FreeArgs(ra);
+	exit(1);
 }
 
-void addchoice(const char *txt)
+/*
+ * Add a choice to the list of choices, but don't create
+ * the button just yet.  This'll be done once all of them
+ * are known and the math to create the window sizing/layout
+ * can be done.
+ */
+static void
+addchoice(const char *txt)
 {
-  struct choice *c=myalloc(sizeof(struct choice));
-  if(lastchoice)
-    lastchoice->next=c;
-  else
-    firstchoice=c;
-  lastchoice=c;
-  c->l=strlen(c->text=txt);
+	struct choice *c=myalloc(sizeof(struct choice));
+	if(lastchoice)
+		lastchoice->next=c;
+	else
+		firstchoice=c;
+	lastchoice=c;
+
+	c->l = strlen(txt);
+	c->text = txt;
+
 #ifdef USE_FONTSETS
-  totw+=(c->w=XmbTextEscapement(dri.dri_FontSet, c->text, c->l))+BUT_BUTSPACE;
+	totw+=(c->w=XmbTextEscapement(dri.dri_FontSet, c->text, c->l))+BUT_BUTSPACE;
 #else
-  totw+=(c->w=XTextWidth(dri.dri_Font, c->text, c->l))+BUT_BUTSPACE;
+	totw+=(c->w=XTextWidth(dri.dri_Font, c->text, c->l))+BUT_BUTSPACE;
 #endif
-  nchoices++;
+	nchoices++;
 }
 
-void addline(const char *txt)
+/*
+ * Add a line to the text box that we can draw.
+ */
+static void
+addline(const char *txt)
 {
   struct line *l=myalloc(sizeof(struct line));
   if(lastline)
@@ -94,6 +113,13 @@ void addline(const char *txt)
     firstline=l;
   lastline=l;
   l->l=strlen(l->text=txt);
+
+  /* These are used to find the size, which we want
+   * to use in order to determine how big our window
+   * should be.  It's a bit of a chicken/egg problem
+   * for now whilst this is figured out - it's also
+   * done in gadget_textbox_addline().
+   */
 #ifdef USE_FONTSETS
   l->w=XmbTextEscapement(dri.dri_FontSet, l->text, l->l);
 #else
@@ -104,57 +130,13 @@ void addline(const char *txt)
     maxw=l->w;
 }
 
-void refresh_text()
-{
-  int w=totw-BUT_EXTSPACE-BUT_EXTSPACE;
-  int h=toth-TXT_TOPSPACE-TXT_MIDSPACE-TXT_BOTSPACE-BUT_VSPACE-
-    (dri.dri_Ascent+dri.dri_Descent);
-  int x=(totw-maxw+TXT_HSPACE)>>1;
-  int y=((dri.dri_Ascent+dri.dri_Descent)>>1)+dri.dri_Ascent;
-  struct line *l;
-  XSetForeground(dpy, gc, dri.dri_Pens[SHADOWPEN]);
-  XDrawLine(dpy, textwin, gc, 0, 0, w-2, 0);
-  XDrawLine(dpy, textwin, gc, 0, 0, 0, h-2);
-  XSetForeground(dpy, gc, dri.dri_Pens[SHINEPEN]);
-  XDrawLine(dpy, textwin, gc, 0, h-1, w-1, h-1);
-  XDrawLine(dpy, textwin, gc, w-1, 0, w-1, h-1);  
-  XSetForeground(dpy, gc, dri.dri_Pens[TEXTPEN]);
-  for(l=firstline; l; l=l->next) {
-#ifdef USE_FONTSETS
-    XmbDrawString(dpy, textwin, dri.dri_FontSet, gc, x, y, l->text, l->l);
-#else
-    XDrawString(dpy, textwin, gc, x, y, l->text, l->l);
-#endif
-    y+=dri.dri_Ascent+dri.dri_Descent;
-  }
-}
-
 void refresh_choice(struct choice *c)
 {
-  int w=c->w+BUT_BUTSPACE;
-  int h=dri.dri_Ascent+dri.dri_Descent+BUT_VSPACE;
-  XSetForeground(dpy, gc, dri.dri_Pens[TEXTPEN]);
-#ifdef USE_FONTSETS
-  XmbDrawString(dpy, c->win, dri.dri_FontSet, gc, BUT_BUTSPACE/2,
-		dri.dri_Ascent+BUT_VSPACE/2, c->text, c->l);
-#else
-  XDrawString(dpy, c->win, gc, BUT_BUTSPACE/2,
-	      dri.dri_Ascent+BUT_VSPACE/2, c->text, c->l);
-#endif
-  XSetForeground(dpy, gc, dri.dri_Pens[(c==selected && depressed)?
-				     SHADOWPEN:SHINEPEN]);
-  XDrawLine(dpy, c->win, gc, 0, 0, w-2, 0);
-  XDrawLine(dpy, c->win, gc, 0, 0, 0, h-2);
-  XSetForeground(dpy, gc, dri.dri_Pens[(c==selected && depressed)?
-				     SHINEPEN:SHADOWPEN]);
-  XDrawLine(dpy, c->win, gc, 1, h-1, w-1, h-1);
-  XDrawLine(dpy, c->win, gc, w-1, 1, w-1, h-1);  
-  XSetForeground(dpy, gc, dri.dri_Pens[BACKGROUNDPEN]);
-  XDrawPoint(dpy, c->win, gc, w-1, 0);
-  XDrawPoint(dpy, c->win, gc, 0, h-1);
+  gadget_button_refresh(c->b);
 }
 
-void split(char *str, const char *delim, void (*func)(const char *))
+static void
+split(char *str, const char *delim, void (*func)(const char *))
 {
   char *p;
   if((p=strtok(str, delim)))
@@ -167,23 +149,21 @@ struct choice *getchoice(Window w)
 {
   struct choice *c;
   for(c=firstchoice; c; c=c->next)
-    if(w == c->win)
+    if(w == c->b->w)
       return c;
   return NULL;
 }
 
 void toggle(struct choice *c)
 {
-  XSetWindowBackground(dpy, c->win, dri.dri_Pens[(depressed&&c==selected)?
-					       FILLPEN:BACKGROUNDPEN]);
-  XClearWindow(dpy, c->win);
-  refresh_choice(c);
+  gadget_button_toggle(c->b);
 }
 
 void abortchoice()
 {
   if(depressed) {
     depressed=0;
+    gadget_button_set_depressed(selected->b, 0);
     toggle(selected);
   }
   selected=NULL;
@@ -210,6 +190,7 @@ int main(int argc, char *argv[])
   static XTextProperty txtprop1, txtprop2;
   int x, y, extra=0, n=0;
   struct choice *c;
+  struct line *l;
   Argtype array[3], *atp;
 
   progname=argv[0];
@@ -258,28 +239,41 @@ int main(int argc, char *argv[])
   XDrawPoint(dpy, stipple, gc, 0, 1);
   XDrawPoint(dpy, stipple, gc, 1, 0);
   XSetWindowBackgroundPixmap(dpy, mainwin, stipple);
+
+  g_textbox = gadget_textbox_create(dpy, &dri, gc, mainwin,
+    BUT_EXTSPACE,
+    TXT_TOPSPACE,
+    totw - BUT_EXTSPACE - BUT_EXTSPACE,
+    toth-TXT_TOPSPACE- TXT_MIDSPACE-TXT_BOTSPACE-BUT_VSPACE- (dri.dri_Ascent+dri.dri_Descent));
+#if 0
   textwin=XCreateSimpleWindow(dpy, mainwin, BUT_EXTSPACE, TXT_TOPSPACE, totw-
-			      BUT_EXTSPACE-BUT_EXTSPACE, toth-TXT_TOPSPACE-
-			      TXT_MIDSPACE-TXT_BOTSPACE-BUT_VSPACE-
-			      (dri.dri_Ascent+dri.dri_Descent),
+			      BUT_EXTSPACE-BUT_EXTSPACE,
 			      0, dri.dri_Pens[SHADOWPEN],
 			      dri.dri_Pens[BACKGROUNDPEN]);
   XSelectInput(dpy, textwin, ExposureMask);
+#endif
+
+  /* Lay out + create buttons */
   x=BUT_EXTSPACE;
   y=toth-TXT_BOTSPACE-(dri.dri_Ascent+dri.dri_Descent)-BUT_VSPACE;
   for(c=firstchoice; c; c=c->next) {
-    c->win=XCreateSimpleWindow(dpy, mainwin,
-			       x+(nchoices==1? (extra>>1):
-				  n++*extra/(nchoices-1)),
-			       y, c->w+BUT_BUTSPACE,
-			       dri.dri_Ascent+dri.dri_Descent+
-			       BUT_VSPACE, 0,
-			       dri.dri_Pens[SHADOWPEN],
-			       dri.dri_Pens[BACKGROUNDPEN]);
-    XSelectInput(dpy, c->win, ExposureMask|ButtonPressMask|ButtonReleaseMask|
-		 EnterWindowMask|LeaveWindowMask);
+    c->b = gadget_button_init(dpy, &dri, gc, mainwin,
+        x + (nchoices == 1 ? (extra >> 1) : n++*extra/(nchoices-1)),
+        y,
+        c->w + BUT_BUTSPACE,
+        // Note: the original code didn't need a +2 here, but
+        // when using the ported button gadget it's needed or
+        // the bottom of the button isn't shown. Figure out why!
+        dri.dri_Ascent+dri.dri_Descent + BUT_VSPACE + 2);
+    gadget_button_set_text(c->b, c->text);
     x+=c->w+BUT_BUTSPACE+BUT_INTSPACE;
   }
+
+  /* Lay out + create text box contents */
+  for (l = firstline; l; l = l->next) {
+    gadget_textbox_addline(g_textbox, l->text);
+  }
+
   size_hints.flags = PResizeInc;
   txtprop1.value=(unsigned char *)array[0].ptr;
   txtprop2.value=(unsigned char *)"RequestChoice";
@@ -297,20 +291,22 @@ int main(int argc, char *argv[])
     switch(event.type) {
     case Expose:
       if(!event.xexpose.count) {
-	if(event.xexpose.window == textwin)
-	  refresh_text();
+	if(event.xexpose.window == g_textbox->w)
+	  gadget_textbox_refresh(g_textbox);
 	else if((c=getchoice(event.xexpose.window)))
 	  refresh_choice(c);
       }
       break;
     case LeaveNotify:
-      if(depressed && event.xcrossing.window==selected->win) {
+      if(depressed && event.xcrossing.window==selected->b->w) {
 	depressed=0;
+	gadget_button_set_depressed(selected->b, 0);
 	toggle(selected);
       }
       break;
     case EnterNotify:
-      if((!depressed) && selected && event.xcrossing.window==selected->win) {
+      if((!depressed) && selected && event.xcrossing.window==selected->b->w) {
+	gadget_button_set_depressed(selected->b, 1);
 	depressed=1;
 	toggle(selected);
       }
@@ -320,6 +316,7 @@ int main(int argc, char *argv[])
 	 (c=getchoice(event.xbutton.window))) {
 	abortchoice();
 	depressed=1;
+	gadget_button_set_depressed(c->b, 1);
 	toggle(selected=c);
       }
       break;
