@@ -820,9 +820,12 @@ void internal_broker(XEvent *e)
 
 static void update_clock(void *dontcare)
 {
+  Scrn *scr;
+
   if(server_grabs)
     return;
   call_out(prefs.titleclockinterval, 0, update_clock, dontcare);
+
   scr = get_front_scr();
   do {
     redrawmenubar(scr->menubar);
