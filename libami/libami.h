@@ -389,6 +389,9 @@ extern Pixmap md_image_to_pixmap(Window, unsigned long, struct Image *,
 				 int, int, struct ColorStore *);
 extern char *get_current_icondir(void);
 
+/* mdbattery.c */
+extern void md_update_battery(int pct, int time, int ac);
+
 /* mdwindow.c */
 extern int md_set_appwindow(Window);
 

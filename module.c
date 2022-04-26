@@ -490,6 +490,27 @@ static void handle_module_cmd(struct module *m, char *data, int data_len)
     } else
       reply_module(m, NULL, -1);
     break;
+  case MCMD_UPDATE_BATTERY:
+    {
+        struct mcmd_update_battery *batt;
+        if (data_len != sizeof(struct mcmd_update_battery)) {
+          reply_module(m, NULL, -1);
+          break;
+        }
+        batt = (void *) data;
+
+        fprintf(stderr, "%s: called, BATTERY, pct=%d, time=%d, ac=%d\n",
+            __func__,
+            batt->battery_pct,
+            batt->battery_time,
+            batt->battery_ac);
+
+        /* XXX TODO: update the battery menu thingy here */
+
+        reply_module(m, NULL, 0);
+        break;
+    }
+    break;
   default:
     reply_module(m, NULL, -1);
   }

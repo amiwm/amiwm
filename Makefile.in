@@ -171,6 +171,9 @@ Filesystem : filesystem.o $(LIBAMI)
 Keyboard : kbdmodule.o kbdlexer.o $(LIBAMI)
 	$(CC) -o Keyboard kbdmodule.o kbdlexer.o $(LIBS)
 
+Battery : battery_module.o $(LIBAMI)
+	$(CC) -o Battery battery_module.o $(LIBS)
+
 Launcher : launchermodule.o $(LIBAMI)
 	$(CC) -o Launcher launchermodule.o $(LIBS)
 
@@ -181,7 +184,7 @@ localetest : localetest.o $(LIBAMI)
 	$(CC) -o localetest localetest.o $(LIBS)
 
 clean : lib_clean
-	$(RM) core $(PROGS) $(LIBAMI) Keyboard Launcher *.o
+	$(RM) core $(PROGS) $(LIBAMI) Keyboard Battery Launcher *.o
 	$(RM) lex.yy.c lex.c y.tab.c y.tab.h gram.h gram.c
 	$(RM) kbdlexer.c kbdmodule.h kbdmodule.c
 	$(RM) config.log

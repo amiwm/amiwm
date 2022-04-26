@@ -485,9 +485,16 @@ void createmenubar()
   }
 }
 
+/*
+ * Redraw the menu bar and its components.
+ *
+ * This takes in the target window, which may be the basic menubar,
+ * a clicked-on menu, or the depth widget.
+ */
 void redrawmenubar(Window w)
 {
   static const char defaultTimeFormat[] = "%c";
+  int widget_rhs;
 
   struct Menu *m;
   struct Item *item;
@@ -495,6 +502,7 @@ void redrawmenubar(Window w)
   if(!w)
     return;
   if(w==scr->menubar) {
+    /* Menubar itself */
     XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[BARDETAILPEN]);
     XSetBackground(dpy, scr->menubargc, scr->dri.dri_Pens[BARBLOCKPEN]);
 #ifdef USE_FONTSETS
@@ -507,6 +515,13 @@ void redrawmenubar(Window w)
 #endif
     XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[BARTRIMPEN]);  
     XDrawLine(dpy, w, scr->menubargc, 0, scr->bh-1, scr->width-1, scr->bh-1);
+
+    /* Widgets start here and move to the left */
+    widget_rhs = (scr->width - 30);
+    /*
+     * Update the title bar clock if it's enabled.
+     */
+
     if( prefs.titlebarclock )
     {
       char clockbuf[512];
@@ -519,15 +534,38 @@ void redrawmenubar(Window w)
 #ifdef USE_FONTSETS
       l = XmbTextEscapement(scr->dri.dri_FontSet, clockbuf, strlen(clockbuf));
       XmbDrawImageString(dpy, w, scr->dri.dri_FontSet, scr->menubargc,
-			 (scr->width-30-l), 1+scr->dri.dri_Ascent,
+			 widget_rhs - l, 1+scr->dri.dri_Ascent,
 			 clockbuf, strlen(clockbuf));
 #else
       l = XTextWidth(scr->dri.dri_Font, clockbuf, strlen(clockbuf));
-      XDrawImageString( dpy, w, scr->menubargc,(scr->width-30-l),
+      XDrawImageString( dpy, w, scr->menubargc, widget_rhs - l,
 			1+scr->dri.dri_Ascent, clockbuf, strlen(clockbuf));
 #endif
-    }    
+      widget_rhs = widget_rhs - l - 8; // 8 = padding
+    }
+
+    /*
+     * Update the battery indicator if it's enabled.
+     */
+    if (1) {
+      char battery_buf[512];
+      int l;
+
+      sprintf(battery_buf, "| Battery |");
+#ifdef USE_FONTSETS
+      l = XmbTextEscapement(scr->dri.dri_FontSet, battery_buf, strlen(battery_buf));
+      XmbDrawImageString(dpy, w, scr->dri.dri_FontSet, scr->menubargc,
+			 widget_rhs - l, 1+scr->dri.dri_Ascent,
+			 battery_buf, strlen(battery_buf));
+#else
+      l = XTextWidth(scr->dri.dri_Font, battery_buf, strlen(battery_buf));
+      XDrawImageString( dpy, w, scr->menubargc, widget_rhs - l,
+			1+scr->dri.dri_Ascent, battery_buf, strlen(battery_buf));
+#endif
+      widget_rhs = widget_rhs - l - 8; // 8 = padding
+    }
   } else if(w==scr->menubardepth) {
+    /* Menubar depth widget */
     if(!mbdclick) {
       XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[SHADOWPEN]);
       XDrawRectangle(dpy, w, scr->menubargc, 4, scr->h2, 10, scr->h6-scr->h2);
@@ -545,6 +583,7 @@ void redrawmenubar(Window w)
     XDrawLine(dpy, w, scr->menubargc, 0, scr->bh-1, 22, scr->bh-1);
     XDrawLine(dpy, w, scr->menubargc, 22, 0, 22, scr->bh-1);
   } else {
+    /* One of the menus is being displayed */
     for(m=scr->firstmenu; m; m=m->next)
       if(m->win==w)
 	redraw_menu(m, w);
