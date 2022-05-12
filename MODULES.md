@@ -94,10 +94,9 @@ effect anyway.)
 
 An example with multiple modifiers in a single keybinding.
 
-Module "Keyboard" \
-	Meta<M>:all:rotatewindows\
-	Meta<Tab>:all:raisescreen\
-	Control Meta<Tab>:all:lowerscreen"
+Module "Keyboard" "Meta<M>:all:rotatescreens\
+	Meta<Tab>:all:raisewindow\
+	Control Meta<Tab>:all:lowerwindow"
 
 ## Filesystem module
 
