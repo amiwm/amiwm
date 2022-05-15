@@ -38,9 +38,11 @@ get_apm_info(void)
 		return false;
 	}
 
+#if 0
 	printf("Battery life: %d\n", info.ai_batt_life);
 	printf("Battery time: %d\n", info.ai_batt_time);
 	printf("Battery AC: %d\n", info.ai_acline);
+#endif
 
 	md_update_battery(info.ai_batt_life, info.ai_batt_time,
 	    info.ai_acline);
@@ -51,15 +53,16 @@ get_apm_info(void)
 static void
 periodic_func(void)
 {
-	fprintf(stderr, "Ha!\n");
 	get_apm_info();
 }
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
   char *arg;
 
   arg = md_init(argc, argv);
+  (void) arg;
 
   progname=argv[0];
 
@@ -73,6 +76,7 @@ int main(int argc, char *argv[])
   /* initial battery info */
   get_apm_info();
 
+  /* Run main loop */
   md_main_loop();
 
   close(apm_fd);
