@@ -57,33 +57,113 @@ static int md_write(void *ptr, int len)
 }
 
 /*
+ * Wait until the read FD is ready, or timeout (5 seconds.)
+ *
+ * Returns:
+ * + 1 if OK
+ * + 0 if timeout
+ * < 0 if error
+ */
+static int
+md_wait_read_fd(void)
+{
+  fd_set readfds;
+  struct timeval tv;
+  int ret;
+
+  FD_ZERO(&readfds);
+  FD_SET(md_in_fd, &readfds);
+  tv.tv_sec = 5;
+  tv.tv_usec = 0;
+
+  ret = select(md_in_fd + 1, &readfds, NULL, NULL, &tv);
+  if (ret == 0) {
+    return (0);
+  }
+  if (ret < 0) {
+    return (-1);
+  }
+  if (FD_ISSET(md_in_fd, &readfds)) {
+    return (1);
+  }
+
+  /* FD wasn't set; just return 0 */
+  return (0);
+}
+
+/*
  * Read from the input file descriptor until len; ,populate
  * our buffer.
  *
- * Return total read, else -1 on error.
+ * Return total read, 0 on timeout, else -1 on error.
  */
-static int md_read(void *ptr, int len)
+static int md_read(void *ptr, int len, int block)
 {
   char *p=ptr;
   int r, tot=0;
-  while(len>0) {
-    if((r=read(md_in_fd, p, len))<0) {
-      if(errno==EINTR)
+
+  while (len > 0) {
+
+    /* Wait until the socket is ready, or timeout */
+    r = md_wait_read_fd();
+    if (r < 0) {
+      return (-1);
+    }
+
+    /*
+     * Note: If we've read /anything/, then we just keep
+     * going until we're done.  Otherwise we'll exit
+     * out here with a partial read and things will
+     * go sideways.
+     *
+     * If we're not blocking and select timed out,
+     * return timeout.
+     */
+    if ((tot == 0) && (block == 0) && (r == 0)) {
+      return (0);
+    }
+
+    /*
+     * Try to read some data.  Go back around again
+     * if we hit EINTR/EWOULDBLOCK.
+     *
+     * If we hit EOF then that's an error.
+     */
+    r = read(md_in_fd, p, len);
+
+    /* Error */
+    if (r < 0) {
+      if ((errno == EINTR) || (errno == EWOULDBLOCK)) {
         continue;
-      else
-        return r;
+      } else {
+       return (-1);
+      }
     }
-    if(!r) {
-      if(tot)
-        return tot;
-      else
-        md_exit(0);
+
+    /*
+     * EOF and didn't read anything? md_exit() like
+     * the old code did.
+     */
+    if ((r == 0) && (tot == 0)) {
+      md_exit(0);
     }
+
+    /*
+     * EOF, but we read data, so at least return what
+     * we did read.
+     */
+    if (r == 0) {
+      return (tot);
+    }
+
+    /* r > 0 here */
+
     tot+=r;
     p+=r;
     len-=r;
   }
-  return tot;
+
+  return (tot);
 }
 
 /*
@@ -100,7 +180,7 @@ static int md_int_load(int len)
   }
 
   md_int_buf[len]='\0';
-  return md_read(md_int_buf, len);
+  return md_read(md_int_buf, len, 1);
 }
 
 static struct md_queued_event {
@@ -171,14 +251,31 @@ static int md_get_async(int len)
  *
  * Negative request lengths are treated special - they're
  * treated as XEvents thrown into the input stream.
+ *
+ * Returns >1 if got input, 0 if timed out, < 0 if error.
  */
-int md_handle_input()
+int md_handle_input(void)
 {
-  int res;
+  int res, ret;
 
-  /* Read the length of the request */
-  if(md_read(&res, sizeof(res))!=sizeof(res))
-    return -1;
+  /* Read the length of the request, don't block. */
+  ret = md_read(&res, sizeof(res), 0);
+
+  /* Timeout? */
+  if (ret == 0) {
+    return (0);
+  }
+
+  /* Error? */
+  if (ret < 0) {
+    return (-1);
+  }
+
+  /* Read size doesn't match request size? */
+  if (ret != sizeof(res)) {
+    return (-1);
+  }
+
   if(res>=0) {
     if(!res)
       return 0;
@@ -220,7 +317,7 @@ int md_command(XID id, int cmd, void *data, int data_len, char **buffer)
    */
   if(md_write(&mcmd, sizeof(mcmd))!=sizeof(mcmd) ||
      md_write(data, data_len)!=data_len ||
-     md_read(&res, sizeof(res))!=sizeof(res))
+     md_read(&res, sizeof(res), 1)!=sizeof(res))
     return -1;
 
   /*
@@ -230,7 +327,7 @@ int md_command(XID id, int cmd, void *data, int data_len, char **buffer)
    */
   while(res<-1) {
     md_get_async(~res);
-    if(md_read(&res, sizeof(res))!=sizeof(res))
+    if(md_read(&res, sizeof(res), 1)!=sizeof(res))
       return -1;
   }
 
@@ -240,7 +337,7 @@ int md_command(XID id, int cmd, void *data, int data_len, char **buffer)
    */
   if(res>0) {
     *buffer=malloc(res);
-    if(md_read(*buffer, res)!=res)
+    if(md_read(*buffer, res, 1)!=res)
       return -1;
   }
 
@@ -277,6 +374,23 @@ Display *md_display()
   return dpy;
 }
 
+/*
+ * make the fd blocking or non-blocking.
+ */
+static int
+md_fd_nonblocking(int fd, int nb)
+{
+  int ret, val;
+
+  val = fcntl(fd, F_GETFD);
+  if (nb) {
+    ret = fcntl(fd, F_SETFD, val | O_NONBLOCK);
+  } else {
+    ret = fcntl(fd, F_SETFD, val & ~O_NONBLOCK);
+  }
+  return (ret == 0);
+}
+
 char *md_init(int argc, char *argv[])
 {
   if(argc>0)
@@ -298,37 +412,15 @@ char *md_init(int argc, char *argv[])
   if(md_command(None, MCMD_GET_VERSION, NULL, 0, &amiwm_version)<=0)
     md_fail();
 
+  md_fd_nonblocking(md_in_fd, 1);
+
   return (argc>4? argv[4]:NULL);
 }
 
 void
 md_main_loop()
 {
-  fd_set readfds;
-  struct timeval tv;
-  int ret;
-
-  /*
-   * For now I'm going to use select() for up to
-   * one second on the input FD, even though the
-   * FD is blocking.
-   *
-   * That way in the main loop we at least will
-   * get the chance to run the periodic function.
-   *
-   * A module can then for now set its own timer
-   * signal to run, which should interrupt this
-   * select.
-   */
   do {
-    FD_ZERO(&readfds);
-    FD_SET(md_in_fd, &readfds);
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
-
-    ret = select(md_in_fd + 1, &readfds, NULL, NULL, &tv);
-    (void) ret;
-
     if (md_periodic_func != NULL) {
       md_periodic_func();
     }
