@@ -11,6 +11,9 @@
 
 #include "libami.h"
 
+/* XXX should be an md method */
+extern void (*md_periodic_func)(void);
+
 /*
  * Test battery module for FreeBSD, using APM.
  */
@@ -45,21 +48,29 @@ get_apm_info(void)
 	return true;
 }
 
+static void
+periodic_func(void)
+{
+	fprintf(stderr, "Ha!\n");
+	get_apm_info();
+}
+
 int main(int argc, char *argv[])
 {
-  char *arg=md_init(argc, argv);
+  char *arg;
+
+  arg = md_init(argc, argv);
 
   progname=argv[0];
+
+  md_periodic_func = periodic_func;
 
   apm_fd = open(APM_DEV, O_RDONLY);
   if (apm_fd < 0) {
     err(127, "open");
   }
 
-  /*
-   * XXX TODO: how do I actually get this to run once
-   * a second in the main loop?
-   */
+  /* initial battery info */
   get_apm_info();
 
   md_main_loop();
