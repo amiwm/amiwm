@@ -37,6 +37,8 @@ extern struct Library *XLibBase;
 #define CHECKED 2
 #define DISABLED 4
 
+char battery_status[128];
+
 extern Display *dpy;
 extern Cursor wm_curs;
 extern XContext screen_context, client_context;
@@ -303,7 +305,7 @@ void redraw_item(struct Item *i, Window w)
     XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[BARDETAILPEN]);
     XSetBackground(dpy, scr->menubargc, scr->dri.dri_Pens[BARBLOCKPEN]);
   }
-  if(i->text)
+  if(i->text) {
 #ifdef USE_FONTSETS
     XmbDrawImageString(dpy, w, scr->dri.dri_FontSet,
 		       scr->menubargc, (i->flags&CHECKIT)?1+scr->checkmarkspace:1,
@@ -312,8 +314,9 @@ void redraw_item(struct Item *i, Window w)
     XDrawImageString(dpy, w, scr->menubargc, (i->flags&CHECKIT)?1+scr->checkmarkspace:1,
 		     scr->dri.dri_Ascent+1, i->text, i->textlen);
 #endif
-  else
+  } else {
     XFillRectangle(dpy, w, scr->menubargc, 2, 2, m->width-10, 2);
+  }
   if(i->sub) {
     int x=m->width-6-scr->hotkeyspace-1+8;
 #ifdef USE_FONTSETS
@@ -547,11 +550,11 @@ void redrawmenubar(Window w)
     /*
      * Update the battery indicator if it's enabled.
      */
-    if (1) {
+    if (prefs.battery_info) {
       char battery_buf[512];
       int l;
 
-      sprintf(battery_buf, "| Battery |");
+      sprintf(battery_buf, "| %s |", battery_status);
 #ifdef USE_FONTSETS
       l = XmbTextEscapement(scr->dri.dri_FontSet, battery_buf, strlen(battery_buf));
       XmbDrawImageString(dpy, w, scr->dri.dri_FontSet, scr->menubargc,

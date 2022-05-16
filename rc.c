@@ -105,6 +105,7 @@ struct keyword { char *name; int token; } keywords[] = {
   { "barblockpen", T_BARBLOCKPEN },
   { "bardetailpen", T_BARDETAILPEN },
   { "bartrimpen", T_BARTRIMPEN },
+  { "batteryinfo", BATTERYINFO },
   { "blockpen", T_BLOCKPEN },
   { "both", BOTH },
   { "bottom", BOTTOM },
