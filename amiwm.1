@@ -94,6 +94,12 @@ The time string is formatted with the standard strftime() parameters.
 The default is "%c".  It has been found that "%a %b %e %Y   %l:%M %p" works
 well too.  Number is the update interval in seconds.  
 
+.SH BatteryInfo {yes|no}
+
+This lets you display battery information on the menu bar.
+It reqiures a module (such as Battery) to gather current battery status
+and push it into amiwm to display.
+
 .SH ToolItem \f1\*(lq\f3name" \f1\*(lq\f3command" \f1\*(lq\f3hotkey"
 
 Adds an item in the Tools menu with the specified name, which executes

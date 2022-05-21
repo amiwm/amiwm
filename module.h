@@ -16,6 +16,7 @@
 #define MCMD_MANAGEMENU 18
 #define MCMD_ROTATE_WINDOW_RAISE 19
 #define MCMD_ROTATE_WINDOW_LOWER 20
+#define MCMD_UPDATE_BATTERY 21
 
 struct mcmd_header {
   XID id;
@@ -40,6 +41,14 @@ struct NewAppIcon {
   int x, y;
   Pixmap pm1, pm2, pmm;
   char name[1];
+};
+
+struct mcmd_update_battery {
+  int battery_time;
+  int battery_pct;
+  int battery_cap;
+  int battery_ac;
+  int battery_charging;
 };
 
 extern struct module {

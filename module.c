@@ -490,6 +490,42 @@ static void handle_module_cmd(struct module *m, char *data, int data_len)
     } else
       reply_module(m, NULL, -1);
     break;
+  case MCMD_UPDATE_BATTERY:
+    {
+        struct mcmd_update_battery *batt;
+        extern char battery_status[];
+
+        if (data == NULL) {
+          reply_module(m, NULL, -1);
+          break;
+        }
+        if (data_len != sizeof(struct mcmd_update_battery)) {
+          reply_module(m, NULL, -1);
+          break;
+        }
+        batt = (void *) data;
+
+#if 0
+        fprintf(stderr, "%s: called, BATTERY, pct=%d, time=%d, ac=%d\n",
+            __func__,
+            batt->battery_pct,
+            batt->battery_time,
+            batt->battery_ac);
+#endif
+
+        /*
+         * XXX TODO: for now we're just populating a string here.
+         * Later on we should just store the current battery state
+         * somewhere (a key/value table would be nice!) and then
+         * the widget code can pull out its needed state to render.
+         */
+        snprintf(battery_status, 128, "%d pct%s", batt->battery_pct,
+            batt->battery_ac == 1 ? " A" : " -");
+
+        reply_module(m, NULL, 0);
+        break;
+    }
+    break;
   default:
     reply_module(m, NULL, -1);
   }

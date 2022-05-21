@@ -66,6 +66,7 @@ static int ti_level=0;
 %token <num> INTERSCREENGAP AUTORAISE FOCUS FOLLOWMOUSE CLICKTOTYPE SLOPPY
 %token <num> CUSTOMICONSONLY
 %token <num> TITLEBARCLOCK TITLECLOCKFORMAT
+%token <num> BATTERYINFO
 %token <num> OPAQUEMOVE OPAQUERESIZE SCREENMENU STYLE CLASS TITLE ICONTITLE ICON
 %token <num> SHORTLABELICONS
 %token <ptr> STRING
@@ -118,6 +119,7 @@ stmt		: error
 					prefs.titleclockinterval=$2; 
 					prefs.titleclockformat=$3; }
 		| SCREENMENU truth { prefs.screenmenu=$2; }
+		| BATTERYINFO truth { prefs.battery_info = $2; }
 		| stylespec styleitems RIGHTBRACE
 		;
 

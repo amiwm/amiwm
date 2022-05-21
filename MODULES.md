@@ -121,3 +121,13 @@ Module "Launcher" "(<label>) (<icon>) (<command and args>)"
 
 The icon is one of the .info icons in the amiwm IconDir.
 
+## Battery module
+
+This is a simple battery state polling module that is being used
+during battery monitoring / menu toolbar development.
+
+It's currently FreeBSD specific and based on what xbatt does
+to pull info from APM/ACPI.  Adding Linux and other OS support
+shouldn't be too difficult.
+
+Module "Battery"
