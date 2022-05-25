@@ -67,7 +67,7 @@ InstallNonExec(def_tool.info, $(AMIWM_HOME)/def_tool.info)
 
 /*  Targets for my private use.  Not very portable.   // Marcus  */
 
-DISTFILES = README INSTALL Imakefile smakefile scoptions *.[chly] \
+DISTFILES = README.md INSTALL Imakefile smakefile scoptions *.[chly] \
 	system.amiwmrc def_tool.info
 
 patch :

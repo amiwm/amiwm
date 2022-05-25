@@ -38,7 +38,7 @@ SRCS = main.c screen.c client.c frame.c icc.c \
 		requestchoice.c executecmd.c kbdmodule.c kbdlexer.c \
 		config_util.c launchermodule.c
 
-DISTFILES = README README.modules INSTALL LICENSE amiwm.1 \
+DISTFILES = README.md MODULES.md INSTALL LICENSE amiwm.1 \
 	configure configure.in Makefile.in install-sh smakefile scoptions \
 	*.[chly] system.amiwmrc def_*.info *.map \
 	Background Background_resize Background_resize_norepeat \
