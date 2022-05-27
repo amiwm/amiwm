@@ -370,6 +370,7 @@ extern int md_iconify(Window);
 extern int md_errormsg(Window, char *);
 extern int md_rotate_window_raise(Window);
 extern int md_rotate_window_lower(Window);
+extern int md_rotate_window_desktop(Window);
 
 /* eventdispatcher.c */
 extern void cx_event_broker(int, unsigned long, int (*)(XEvent*));
