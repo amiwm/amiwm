@@ -379,3 +379,18 @@ void flushclients()
     rmclient(c);
   }
 }
+
+/*
+ * Reparent the given client to the given screen.
+ *
+ * This moves the given client to the given screen.
+ */
+void
+reparent_client(Scrn *s, Client *client)
+{
+    client->scr = s;
+    if(client->parent != client->scr->root)
+      XReparentWindow(dpy, client->parent, s->back, client->x, client->y);
+    setstringprop(client->window, amiwm_screen, s->deftitle);
+    sendconfig(client);
+}
