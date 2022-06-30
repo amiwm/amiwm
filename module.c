@@ -45,6 +45,7 @@ extern void remove_fd_from_set(int);
 extern void screentoback();
 extern void raiselowerclient(Client *, int);
 extern void wberror(Scrn *, char *);
+extern void reparent(Client *);
 
 extern Icon *createappicon(struct module *, Window, char *,
 			   Pixmap, Pixmap, Pixmap, int, int);
@@ -525,6 +526,20 @@ static void handle_module_cmd(struct module *m, char *data, int data_len)
         reply_module(m, NULL, 0);
         break;
     }
+    case MCMD_WINDOW_MOVE_NEXT_DESKTOP:
+        /* Move the current window, if any, to the next desktop */
+        c = NULL;
+        if(! XFindContext(dpy, id, client_context, (XPointer*)&c)) {
+          /* Get the current screen */
+          scr=getscreen(id);
+          /* Rotate screen, get the now front screen */
+          screentoback();
+          scr = get_front_scr();
+          /* Assign this client to next screen */
+          reparent_client(scr, c);
+        }
+        reply_module(m, NULL, 0);
+        break;
     break;
   default:
     reply_module(m, NULL, -1);

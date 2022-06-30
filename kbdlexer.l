@@ -44,6 +44,7 @@ int parse_keyword(char *str, YYSTYPE *val)
      { "lowerwindow", (mdfuncp)md_rotate_window_lower },
      { "raisewindow", (mdfuncp)md_rotate_window_raise },
      { "rotatescreens", (mdfuncp)k_rotscreens },
+     { "rotatewindow", (mdfuncp)md_rotate_window_desktop },
    };
 #define N_FUNC (sizeof(functab)/sizeof(functab[0]))
    struct { char *name; int token, num; } kwtab[] = {
