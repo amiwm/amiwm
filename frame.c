@@ -28,7 +28,7 @@ extern Display *dpy;
 extern XContext client_context, screen_context;
 extern Cursor wm_curs;
 extern int shape_extn;
-extern void redrawmenubar(Window);
+extern void redrawmenubar(Scrn *, Window);
 void reshape_frame(Client *c);
 
 Window creategadget(Client *c, Window p, int x, int y, int w, int h)
@@ -510,7 +510,7 @@ void clickenter()
 {
   if((scr=mbdscr)&& clickwindow == scr->menubardepth) {
     mbdclick = scr;
-    redrawmenubar(scr->menubardepth);
+    redrawmenubar(scr, scr->menubardepth);
   } else {
     scr = clickclient->scr;
     redraw(clickclient, clickclient->clicked=clickwindow);
@@ -521,7 +521,7 @@ void clickleave()
 {
   if((scr=mbdscr)&& clickwindow == scr->menubardepth) {
     mbdclick = NULL;
-    redrawmenubar(scr->menubardepth);
+    redrawmenubar(scr, scr->menubardepth);
   } else {
     scr = clickclient->scr;
     clickclient->clicked=None;
