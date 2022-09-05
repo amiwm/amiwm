@@ -24,9 +24,8 @@ STRIPFLAG = -s
 
 PROGS = amiwm requestchoice executecmd ppmtoinfo config_util
 
-MODULES = $(srcdir)/Background $(srcdir)/Keyboard $(srcdir)/Background_resize \
-	 $(srcdir)/Background_stretch $(srcdir)/def_tool.info $(srcdir)/Filesystem \
-	 $(srcdir)/Launcher
+MODULES = Background Keyboard Background_resize Background_stretch \
+	    def_tool.info Filesystem Launcher
 
 OBJS  = main.o screen.o client.o frame.o icc.o \
 		icon.o menu.o diskobject.o gram.o lex.o rc.o \
@@ -38,7 +37,7 @@ SRCS = main.c screen.c client.c frame.c icc.c \
 		requestchoice.c executecmd.c kbdmodule.c kbdlexer.c \
 		config_util.c launchermodule.c
 
-DISTFILES = README README.modules INSTALL LICENSE amiwm.1 \
+DISTFILES = README.md MODULES.md INSTALL LICENSE amiwm.1 \
 	configure configure.in Makefile.in install-sh smakefile scoptions \
 	*.[chly] system.amiwmrc def_*.info *.map \
 	Background Background_resize Background_resize_norepeat \
@@ -50,33 +49,33 @@ PACKAGENAME = amiwm
 AMIWM_HOME = $(libdir)/amiwm
 AMIWM_MODULES = $(libdir)/amiwm/modules
 
-all : lib_all
+all: lib_all
 	@$(MAKE) local_all
 
-local_all : $(PROGS) $(MODULES)
+local_all: $(PROGS) $(MODULES)
 
-lib_all :
+lib_all:
 	@( cd libami; $(MAKE) all )
 
-lib_clean :
+lib_clean:
 	@( cd libami; $(MAKE) clean )
 
 .c.o:
 	$(CC) -c $(CPPFLAGS) $(ALL_CFLAGS) $<
 
-menu.o : menu.c
+menu.o: menu.c
 	$(CC) -c $(CPPFLAGS) $(ALL_CFLAGS) -DAMIWM_HOME=\"$(AMIWM_HOME)\" $<
 
-rc.o : rc.c
+rc.o: rc.c
 	$(CC) -c $(CPPFLAGS) $(ALL_CFLAGS) -DAMIWM_HOME=\"$(AMIWM_HOME)\" $<
 
-diskobject.o : diskobject.c
+diskobject.o: diskobject.c
 	$(CC) -c $(CPPFLAGS) $(ALL_CFLAGS) -DAMIWM_HOME=\"$(AMIWM_HOME)\" $<
 
-filesystem.o : joke_fs.c
-	$(CC) -o $@ -c $(CPPFLAGS) $(ALL_CFLAGS) -DAMIWM_HOME=\"$(AMIWM_HOME)\" $<
+filesystem.o: joke_fs.c
+	$(CC) -o $@ -c $(CPPFLAGS) $(ALL_CFLAGS) -DAMIWM_HOME=\"$(AMIWM_HOME)\" joke_fs.c
 
-ppmtoinfo.o : ppmtoinfo.c
+ppmtoinfo.o: ppmtoinfo.c
 	$(CC) -c $(CPPFLAGS) $(ALL_CFLAGS) -DAMIWM_HOME=\"$(AMIWM_HOME)\" $<
 
 gram.h gram.c: gram.y
@@ -84,7 +83,7 @@ gram.h gram.c: gram.y
 	mv y.tab.c gram.c
 	mv y.tab.h gram.h
 
-lex.c : lex.l
+lex.c: lex.l
 	$(LEX) -t $< > lex.c
 
 kbdmodule.h kbdmodule.c: kbdmodule.y
@@ -92,30 +91,30 @@ kbdmodule.h kbdmodule.c: kbdmodule.y
 	mv y.tab.c kbdmodule.c
 	mv y.tab.h kbdmodule.h
 
-kbdlexer.c : kbdlexer.l
+kbdlexer.c: kbdlexer.l
 	$(LEX) -t $< > kbdlexer.c
 
-install : $(PROGS) $(MODULES) Xsession Xsession2 Xinitrc amiwm-init
+install: $(PROGS) $(MODULES) Xsession Xsession2 Xinitrc amiwm-init
 	-mkdir -p $(AMIWM_HOME)
 	-mkdir -p $(AMIWM_MODULES)
 	$(INSTALL) $(STRIPFLAG) requestchoice $(AMIWM_HOME)/requestchoice
 	$(INSTALL) $(STRIPFLAG) config_util $(AMIWM_HOME)/config_util
 	$(INSTALL) $(STRIPFLAG) executecmd $(AMIWM_HOME)/executecmd
 	for module in $(MODULES); do \
-	  if [ "$$module" = "$(srcdir)/Background" ]; then \
+	  if [ "$$module" = "Background" ]; then \
 	    $(INSTALL) $$module $(AMIWM_MODULES)/Background; \
 	  else \
-	    if [ "$$module" = "$(srcdir)/Background_resize" ]; then \
+	    if [ "$$module" = "Background_resize" ]; then \
 	      $(INSTALL) $$module $(AMIWM_MODULES)/Background_resize; \
 	    else \
-	      if [ "$$module" = "$(srcdir)/Background_stretch" ]; then \
+	      if [ "$$module" = "Background_stretch" ]; then \
 	        $(INSTALL) $$module $(AMIWM_MODULES)/Background_stretch; \
 	      else \
-		if [ "$$module" = "$(srcdir)/def_tool.info" ]; then \
+		if [ "$$module" = "def_tool.info" ]; then \
 		    $(INSTALL) $$module $(AMIWM_MODULES)/def_tool.info; \
 		else \
-	    	    $(INSTALL) $(STRIPFLAG) $$module $(AMIWM_MODULES)/$$module; \
-	    	fi; \
+		    $(INSTALL) $(STRIPFLAG) $$module $(AMIWM_MODULES)/$$module; \
+		fi; \
 	      fi; \
 	    fi; \
 	  fi; \
@@ -140,12 +139,12 @@ install : $(PROGS) $(MODULES) Xsession Xsession2 Xinitrc amiwm-init
 	-mkdir -p $(mandir)/man1
 	$(INSTALL) -m 644 $(srcdir)/amiwm.1 $(mandir)/man1/amiwm.1
 
-fs-install : Filesystem
+fs-install: Filesystem
 	$(INSTALL) $(STRIPFLAG) Filesystem $(AMIWM_HOME)/Filesystem
 	$(INSTALL) -m 644 def_disk.info $(AMIWM_HOME)/def_disk.info
 	$(INSTALL) -m 644 def_drawer.info $(AMIWM_HOME)/def_disk.info
 
-cde-install : Xresources.amiwm Amilogo.bm Amilogo.pm
+cde-install: Xresources.amiwm Amilogo.bm Amilogo.pm
 	-mkdir -p $(DT_DIR)/config/C/Xresources.d
 	$(INSTALL) -m 644 Xresources.amiwm $(DT_DIR)/config/C/Xresources.d/Xresources.amiwm
 	-mkdir -p $(DT_DIR)/appconfig/icons/C
@@ -153,57 +152,57 @@ cde-install : Xresources.amiwm Amilogo.bm Amilogo.pm
 	$(INSTALL) -m 644 Amilogo.pm $(DT_DIR)/appconfig/icons/C/Amilogo.pm
 
 
-amiwm : $(OBJS) $(LIBAMI)
+amiwm: $(OBJS) $(LIBAMI)
 	$(CC) -o amiwm $(OBJS) $(LIBS)
 
-requestchoice : requestchoice.o $(LIBAMI)
+requestchoice: requestchoice.o $(LIBAMI)
 	$(CC) -o requestchoice requestchoice.o $(LIBS)
 
-config_util : config_util.o $(LIBAMI)
+config_util: config_util.o $(LIBAMI)
 	$(CC) -o config_util config_util.o $(LIBS)
 
-executecmd : executecmd.o $(LIBAMI)
+executecmd: executecmd.o $(LIBAMI)
 	$(CC) -o executecmd executecmd.o $(LIBS)
 
-Filesystem : filesystem.o $(LIBAMI)
+Filesystem: filesystem.o $(LIBAMI)
 	$(CC) -o Filesystem filesystem.o $(LIBS)
 
-Keyboard : kbdmodule.o kbdlexer.o $(LIBAMI)
+Keyboard: kbdmodule.o kbdlexer.o $(LIBAMI)
 	$(CC) -o Keyboard kbdmodule.o kbdlexer.o $(LIBS)
 
-Battery : battery_module.o $(LIBAMI)
+Battery: battery_module.o $(LIBAMI)
 	$(CC) -o Battery battery_module.o $(LIBS)
 
-Launcher : launchermodule.o $(LIBAMI)
+Launcher: launchermodule.o $(LIBAMI)
 	$(CC) -o Launcher launchermodule.o $(LIBS)
 
-ppmtoinfo : ppmtoinfo.o
+ppmtoinfo: ppmtoinfo.o
 	$(CC) -o ppmtoinfo ppmtoinfo.o -lm
 
-localetest : localetest.o $(LIBAMI)
+localetest: localetest.o $(LIBAMI)
 	$(CC) -o localetest localetest.o $(LIBS)
 
-clean : lib_clean
+clean: lib_clean
 	$(RM) core $(PROGS) $(LIBAMI) Keyboard Battery Launcher *.o
 	$(RM) lex.yy.c lex.c y.tab.c y.tab.h gram.h gram.c
 	$(RM) kbdlexer.c kbdmodule.h kbdmodule.c
 	$(RM) config.log
 
-distclean : clean
+distclean: clean
 	$(RM) config.status config.cache *~
 	$(RM) Makefile libami/Makefile Xresources.amiwm Xsession Xsession2 Xinitrc
 
-spotless : distclean
+spotless: distclean
 
 TAGS:
 	etags *.[ch] libami/*.[ch]
 
-patch :
+patch:
 	mv version.h old_version.h
 	sed < old_version.h 's/l/"/' | awk '-F"' '{ printf "%s\"%sl%s\"\n",$$1,$$2,1+$$3 }' > version.h
 	rm old_version.h
 
-dist : version.h clean
+dist: version.h clean
 	( version=`sed < version.h -e 's/^[^"]*"//' -e 's/"[^"]*$$//'`; \
 	  tarname="$(PACKAGENAME)$$version.tar"; \
 	  mkdir $(PACKAGENAME)$$version; \
