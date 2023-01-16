@@ -156,16 +156,7 @@ void reparenticon(Icon *i, Scrn *s, int x, int y)
   i->next=s->icons;
   s->icons=i;
   if(i->client) {
-#if 1
     reparent_client(s, i->client);
-#else
-    i->client->scr=s;
-    if(i->client->parent != i->client->scr->root)
-      XReparentWindow(dpy, i->client->parent, s->back,
-		      i->client->x, i->client->y);
-    setstringprop(i->client->window, amiwm_screen, s->deftitle);
-    sendconfig(i->client);
-#endif
   }
   if(os)
     selecticon(i);
