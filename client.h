@@ -51,5 +51,7 @@ extern void getstate(Client *);
 extern void grav_map_frame_to_win(Client *, int, int, int *, int *);
 extern void grav_map_win_to_frame(Client *, int, int, int *, int *);
 extern void setclientstate(Client *, int);
+extern void reparent_client(struct _Scrn *s, Client *client);
+
 
 #endif
