@@ -81,6 +81,13 @@ md_wait_read_fd(void)
     return (0);
   }
   if (ret < 0) {
+    /*
+     * Note: this happens during things like system suspend/resume
+     * on FreeBSD.
+     */
+    if (errno == EINTR) {
+        return (0);
+    }
     return (-1);
   }
   if (FD_ISSET(md_in_fd, &readfds)) {
