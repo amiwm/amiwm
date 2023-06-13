@@ -88,7 +88,7 @@ extern Scrn *mbdclick, *mbdscr;
 extern void reparent(Client *);
 extern void redraw(Client *, Window);
 extern void redrawclient(Client *);
-extern void redrawmenubar(Window);
+extern void redrawmenubar(Scrn *, Window);
 extern void gadgetclicked(Client *c, Window w, XEvent *e);
 extern void gadgetunclicked(Client *c, XEvent *e);
 extern void gadgetaborted(Client *c);
@@ -283,7 +283,7 @@ void restorescreentitle(Scrn *s)
 {
   (scr=s)->title=s->deftitle;
   XClearWindow(dpy, s->menubar);
-  redrawmenubar(s->menubar);  
+  redrawmenubar(s, s->menubar);
   if(free_screentitle) {
     free(free_screentitle);
     free_screentitle=NULL;
@@ -295,7 +295,7 @@ void wberror(Scrn *s, char *message)
   remove_call_out((void(*)(void *))restorescreentitle, s);
   (scr=s)->title=message;
   XClearWindow(dpy, s->menubar);
-  redrawmenubar(s->menubar);
+  redrawmenubar(s, s->menubar);
   XBell(dpy, 100);
   call_out(2, 0, (void(*)(void *))restorescreentitle, s);
 }
@@ -828,7 +828,7 @@ static void update_clock(void *dontcare)
 
   scr = get_front_scr();
   do {
-    redrawmenubar(scr->menubar);
+    redrawmenubar(scr, scr->menubar);
     scr=scr->behind;
   } while(scr != get_front_scr());
 }
@@ -1001,7 +1001,7 @@ int main(int argc, char *argv[])
 	  else if(i)
 	    redrawicon(i, event.xexpose.window);
 	  else if(scr)
-	    redrawmenubar(event.xexpose.window);
+	    redrawmenubar(scr, event.xexpose.window);
 	  if((rubberclient || boundingscr)&&!prefs.opaquemove) drawrubber();
 	}
 	break;
@@ -1337,7 +1337,7 @@ int main(int argc, char *argv[])
 	  } else if(scr&&event.xbutton.window==scr->menubardepth) {
 	    clickwindow=scr->menubardepth;
 	    mbdclick=mbdscr=scr;
-	    redrawmenubar(scr->menubardepth);
+	    redrawmenubar(scr, scr->menubardepth);
 	  } else if(scr&&event.xbutton.window==scr->menubar &&
 		    scr->back!=scr->root) {
 	    startscreendragging(scr, &event);
@@ -1352,7 +1352,7 @@ int main(int argc, char *argv[])
 	  else if(scr&&(scr==mbdscr)&&clickwindow==scr->menubardepth) {
 	    mbdclick=NULL;
 	    clickwindow=None;
-	    redrawmenubar(scr->menubardepth);
+	    redrawmenubar(scr, scr->menubardepth);
 	  } else if(clickclient)
 	    gadgetaborted(clickclient);
 	  else if(dragiconlist)
@@ -1386,7 +1386,7 @@ int main(int argc, char *argv[])
 	  else if((scr=mbdscr)&& clickwindow==scr->menubardepth) {
 	    if(mbdclick) {
 	      mbdclick=NULL;
-	      redrawmenubar(scr->menubardepth);
+	      redrawmenubar(scr, scr->menubardepth);
 	      screentoback();
 	    }
 	    clickwindow=None;

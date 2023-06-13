@@ -32,6 +32,11 @@ int md_rotate_window_lower(XID id)
   return md_command00(id, MCMD_ROTATE_WINDOW_LOWER);
 }
 
+int md_rotate_window_desktop(XID id)
+{
+  return md_command00(id, MCMD_WINDOW_MOVE_NEXT_DESKTOP);
+}
+
 int md_errormsg(Window id, char *str)
 {
   return md_command0(id, MCMD_ERRORMSG, str, strlen(str));

@@ -494,7 +494,7 @@ void createmenubar()
  * This takes in the target window, which may be the basic menubar,
  * a clicked-on menu, or the depth widget.
  */
-void redrawmenubar(Window w)
+void redrawmenubar(Scrn *scr, Window w)
 {
   static const char defaultTimeFormat[] = "%c";
   int widget_rhs;

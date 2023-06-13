@@ -75,10 +75,10 @@ Currently the following are defined:
 rotatescreens  -  Move the frontmost screen to the back
 raisewindow    -  Rotate the bottom window to the top of the screen
 lowerwindow    -  Rotate the top window to the bottom of the screen
+rotatewindow   -  Move the current window to the next screen, rotate screen
 front          -  Move the window in which the key is pressed to the front
 back           -  Move the window in which the key is pressed to the back
 iconify        -  Iconify the window in which the key is pressed
-
 
 #### Example
 
