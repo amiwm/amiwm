@@ -34,7 +34,7 @@ clean :
 	$(RM) *.o libami.a
 
 libami.a : $(OBJS)
-	ar rc libami.a $(OBJS)
+	$(AR) rc libami.a $(OBJS)
 	$(RANLIB) libami.a
 
 .c.o:
