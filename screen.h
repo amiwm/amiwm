@@ -47,4 +47,9 @@ extern Scrn * openscreen(char *, Window);
 extern void realizescreens();
 extern void screentoback();
 
+void closescreen();
+Scrn *openscreen(char *deftitle, Window root);
+void realizescreens();
+void screentoback();
+
 #endif
