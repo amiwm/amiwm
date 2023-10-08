@@ -2,7 +2,9 @@
 *.o
 Makefile
 
+/Filesystem
 /Keyboard
+/Launcher
 /Xinitrc
 /Xsession
 /Xsession2
