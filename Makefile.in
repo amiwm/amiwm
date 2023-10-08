@@ -38,7 +38,7 @@ SRCS = main.c screen.c client.c frame.c icc.c \
 		config_util.c launchermodule.c
 
 DISTFILES = README.md MODULES.md INSTALL LICENSE amiwm.1 \
-	configure configure.ac Makefile.in install-sh smakefile scoptions \
+	configure configure.ac Makefile.in install-sh \
 	*.[chly] system.amiwmrc.in def_*.info *.map \
 	Background Background_resize Background_resize_norepeat \
 	Background_stretch Launcher Xresources.amiwm.in Amilogo.?m \
