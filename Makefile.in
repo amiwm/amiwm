@@ -28,13 +28,13 @@ MODULES = Background Keyboard Background_resize Background_stretch \
 	    def_tool.info Filesystem Launcher
 
 OBJS  = main.o screen.o client.o frame.o icc.o \
-		icon.o menu.o diskobject.o gram.o lex.o rc.o \
+		icon.o menu.o diskobject.o gram.tab.o lex.o rc.o \
 		module.o
 
 SRCS = main.c screen.c client.c frame.c icc.c \
-		icon.c menu.c diskobject.c gram.c lex.c rc.c \
+		icon.c menu.c diskobject.c gram.tab.c lex.c rc.c \
 		module.c \
-		requestchoice.c executecmd.c kbdmodule.c kbdlexer.c \
+		requestchoice.c executecmd.c kbdmodule.tab.c kbdlexer.c \
 		config_util.c launchermodule.c
 
 DISTFILES = README.md MODULES.md INSTALL LICENSE amiwm.1 \
@@ -66,7 +66,7 @@ lib_clean:
 menu.o: menu.c
 	$(CC) -c $(CPPFLAGS) $(ALL_CFLAGS) -DAMIWM_HOME=\"$(AMIWM_HOME)\" $<
 
-rc.o: rc.c gram.h
+rc.o: rc.c gram.tab.h
 	$(CC) -c $(CPPFLAGS) $(ALL_CFLAGS) -DAMIWM_HOME=\"$(AMIWM_HOME)\" $<
 
 diskobject.o: diskobject.c
@@ -78,17 +78,17 @@ filesystem.o: joke_fs.c
 ppmtoinfo.o: ppmtoinfo.c
 	$(CC) -c $(CPPFLAGS) $(ALL_CFLAGS) -DAMIWM_HOME=\"$(AMIWM_HOME)\" $<
 
-gram.h gram.c: gram.y
-	$(YACC) --defines=gram.h --output=gram.c $<
+%.tab.c %.tab.h: %.y
+	$(YACC) -b $* -d $<
 
 lex.c: lex.l
 	$(LEX) -t $< > lex.c
 
-kbdmodule.h kbdmodule.c: kbdmodule.y
-	$(YACC) --defines=kbdmodule.h --output=kbdmodule.c $<
-
 kbdlexer.c: kbdlexer.l
 	$(LEX) -t $< > kbdlexer.c
+
+lex.o: gram.tab.h
+kbdlexer.o: kbdmodule.tab.h
 
 install: $(PROGS) $(MODULES) system.amiwmrc Xsession Xsession2 Xinitrc amiwm-init
 	-mkdir -p $(DESTDIR)$(AMIWM_HOME)
@@ -163,8 +163,8 @@ executecmd: executecmd.o $(LIBAMI)
 Filesystem: filesystem.o $(LIBAMI)
 	$(CC) $(LDFLAGS) -o Filesystem filesystem.o $(LIBS)
 
-Keyboard: kbdmodule.o kbdlexer.o $(LIBAMI)
-	$(CC) $(LDFLAGS) -o Keyboard kbdmodule.o kbdlexer.o $(LIBS)
+Keyboard: kbdmodule.tab.o kbdlexer.o $(LIBAMI)
+	$(CC) $(LDFLAGS) -o Keyboard kbdmodule.tab.o kbdlexer.o $(LIBS)
 
 Battery: battery_module.o $(LIBAMI)
 	$(CC) $(LDFLAGS) -o Battery battery_module.o $(LIBS)
@@ -180,8 +180,8 @@ localetest: localetest.o $(LIBAMI)
 
 clean: lib_clean
 	$(RM) core $(PROGS) $(LIBAMI) Keyboard Battery Launcher *.o
-	$(RM) lex.yy.c lex.c y.tab.c y.tab.h gram.h gram.c
-	$(RM) kbdlexer.c kbdmodule.h kbdmodule.c
+	$(RM) lex.yy.c lex.c gram.tab.h gram.tab.c
+	$(RM) kbdlexer.c kbdmodule.tab.h kbdmodule.tab.c
 	$(RM) config.log
 
 distclean: clean

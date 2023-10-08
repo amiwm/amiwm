@@ -7,7 +7,7 @@
 #include "prefs.h"
 #include "drawinfo.h"
 #include "screen.h"
-#include "gram.h"
+#include "gram.tab.h"
 #include "icc.h"
 #include "style.h"
 

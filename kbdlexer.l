@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include "libami.h"
-#include "kbdmodule.h"
+#include "kbdmodule.tab.h"
 
 unsigned char *inptr;
 extern char *progname;
