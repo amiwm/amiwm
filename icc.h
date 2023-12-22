@@ -6,8 +6,11 @@
 #include "client.h"
 
 extern void init_atoms(void);
+extern void setsupports(Window);
 extern void sendcmessage(Window, Atom, long);
 extern void getproto(Client *c);
+extern void getwmstate(Client *c);
+extern void setwmstate(Client *c);
 extern void setstringprop(Window, Atom, char *);
 extern void propertychange(Client *, Atom);
 extern long _getprop(Window, Atom, Atom, long, char **);

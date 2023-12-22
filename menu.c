@@ -372,23 +372,39 @@ void createmenubar()
 
   scr->firstmenu = NULL;
   attr.override_redirect=True;
-  attr.background_pixel=scr->dri.dri_Pens[BARBLOCKPEN];
-  scr->menubar=XCreateWindow(dpy, scr->back, 0, 0, scr->width, scr->bh, 0,
-			     CopyFromParent,
-			     InputOutput, CopyFromParent,
-			     CWOverrideRedirect|CWBackPixel,
-			     &attr);
+
+
+  if (scr->deftitle) {
+    attr.background_pixel=scr->dri.dri_Pens[BARBLOCKPEN];
+    scr->menubar=XCreateWindow(dpy, scr->back, 0, 0, scr->width, scr->bh, 0,
+                              CopyFromParent,
+                              InputOutput, CopyFromParent,
+                              CWOverrideRedirect|CWBackPixel,
+                              &attr);
+    scr->menubarparent=XCreateWindow(dpy, scr->menubar, 0, 0, scr->width,
+                                    scr->bh-1, 0,
+                                    CopyFromParent, InputOutput, CopyFromParent,
+                                    CWOverrideRedirect|CWBackPixel, &attr);
+    attr.background_pixel=scr->dri.dri_Pens[BACKGROUNDPEN];
+    scr->menubardepth=XCreateWindow(dpy, scr->menubar, scr->width-23,
+                                   0, 23, scr->bh, 0,
+                                   CopyFromParent, InputOutput, CopyFromParent,
+                                   CWOverrideRedirect|CWBackPixel, &attr);
+  } else {
+    scr->menubar=XCreateWindow(dpy, scr->back, 0, 0, scr->width, scr->bh, 0, 0,
+                              InputOnly, CopyFromParent,
+                              CWOverrideRedirect, &attr);
+    scr->menubarparent=None;
+    scr->menubardepth=XCreateWindow(dpy, scr->menubar, scr->width-23,
+                                   0, 23, scr->bh, 0, 0,
+                                   InputOnly, CopyFromParent,
+                                   CWOverrideRedirect, &attr);
+  }
+
   XSaveContext(dpy, scr->menubar, screen_context, (XPointer)scr);
-  scr->menubarparent=XCreateWindow(dpy, scr->menubar, 0, 0, scr->width,
-				   scr->bh-1, 0,
-				   CopyFromParent, InputOutput, CopyFromParent,
-				   CWOverrideRedirect|CWBackPixel, &attr);
-  XSaveContext(dpy, scr->menubarparent, screen_context, (XPointer)scr);
-  attr.background_pixel=scr->dri.dri_Pens[BACKGROUNDPEN];
-  scr->menubardepth=XCreateWindow(dpy, scr->menubar, scr->width-23,
-				  0, 23, scr->bh, 0,
-				  CopyFromParent, InputOutput, CopyFromParent,
-				  CWOverrideRedirect|CWBackPixel, &attr);
+
+  if (scr->menubarparent)
+    XSaveContext(dpy, scr->menubarparent, screen_context, (XPointer)scr);
   XSaveContext(dpy, scr->menubardepth, screen_context, (XPointer)scr);
   scr->disabled_stipple=XCreatePixmap(dpy, scr->back, 6, 2, 1);
   gc=XCreateGC(dpy, scr->disabled_stipple, 0, NULL);
@@ -398,11 +414,16 @@ void createmenubar()
   XDrawPoint(dpy, scr->disabled_stipple, gc, 0, 0);
   XDrawPoint(dpy, scr->disabled_stipple, gc, 3, 1);
   XFreeGC(dpy, gc);
-  scr->menubargc=XCreateGC(dpy, scr->menubar, 0, NULL); 
+
+  if (scr->deftitle) {
+    scr->menubargc=XCreateGC(dpy, scr->menubar, 0, NULL); 
 #ifndef USE_FONTSETS
-  XSetFont(dpy, scr->menubargc, scr->dri.dri_Font->fid);
+    XSetFont(dpy, scr->menubargc, scr->dri.dri_Font->fid);
 #endif
-  XSetBackground(dpy, scr->menubargc, scr->dri.dri_Pens[BARBLOCKPEN]);
+    XSetBackground(dpy, scr->menubargc, scr->dri.dri_Pens[BARBLOCKPEN]);
+  } else {
+    scr->menubargc = NULL;
+  }
   XSelectInput(dpy, scr->menubar, ExposureMask|ButtonPressMask|ButtonReleaseMask);
   XSelectInput(dpy, scr->menubardepth, ExposureMask|ButtonPressMask|
 	       ButtonReleaseMask|EnterWindowMask|LeaveWindowMask);
@@ -413,6 +434,10 @@ void createmenubar()
   scr->checkmarkspace=4+scr->dri.dri_Ascent;
   scr->subspace=scr->hotkeyspace-scr->dri.dri_Ascent;
   scr->menuleft=4;
+
+  if (!scr->menubarparent)
+    return;
+
   m=add_menu("Workbench", 0);
   //add_item(m,"Backdrop",'B',CHECKIT|CHECKED|DISABLED);
   add_item(m,"Execute Command...",'E',0);
@@ -502,7 +527,7 @@ void redrawmenubar(Scrn *scr, Window w)
   struct Menu *m;
   struct Item *item;
 
-  if(!w)
+  if(!w || !scr->menubargc)
     return;
   if(w==scr->menubar) {
     /* Menubar itself */

@@ -18,6 +18,7 @@ extern void redraw(Client *, Window);
 
 Atom wm_state, wm_change_state, wm_protocols, wm_delete, wm_take_focus;
 Atom wm_colormaps, wm_name, wm_normal_hints, wm_hints, wm_icon_name, wm_class;
+Atom net_supported, net_wm_state, net_wm_state_fullscreen;
 Atom amiwm_screen, swm_vroot, amiwm_wflags, amiwm_appiconmsg, amiwm_appwindowmsg;
 
 extern Display *dpy;
@@ -35,11 +36,24 @@ void init_atoms()
   wm_hints = XInternAtom(dpy, "WM_HINTS", False);
   wm_icon_name = XInternAtom(dpy, "WM_ICON_NAME", False);
   wm_class = XInternAtom(dpy, "WM_CLASS", False);
+  net_supported = XInternAtom(dpy, "_NET_SUPPORTED", False);
+  net_wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
+  net_wm_state_fullscreen = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
   amiwm_screen = XInternAtom(dpy, "AMIWM_SCREEN", False);
   swm_vroot = XInternAtom(dpy, "__SWM_VROOT", False);
   amiwm_wflags = XInternAtom(dpy, "AMIWM_WFLAGS", False);
   amiwm_appiconmsg = XInternAtom(dpy, "AMIWM_APPICONMSG", False);
   amiwm_appwindowmsg = XInternAtom(dpy, "AMIWM_APPWINDOWMSG", False);
+}
+
+void setsupports(Window root)
+{
+  Atom atoms[] = {
+    net_wm_state_fullscreen
+  };
+  XChangeProperty(dpy, root, net_supported, XA_ATOM, 32,
+    PropModeReplace, (unsigned char *)atoms,
+    sizeof(atoms)/sizeof(atoms[0]));
 }
 
 void setstringprop(Window w, Atom a, char *str)
@@ -66,6 +80,39 @@ XEvent *mkcmessage(Window w, Atom a, long x)
   ev.xclient.data.l[1] = CurrentTime;
   return &ev;
 }
+
+void getwmstate(Client *c)
+{
+  Atom *p;
+  int i;
+  long n;
+  Window w;
+
+  w = c->window;
+  if ((n = _getprop(w, net_wm_state, XA_ATOM, 20L, (char**)&p)) < 0)
+    return;
+  c->fullscreen = 0;
+  if (!n)
+    return;
+  for (i = 0; i < n; i++)
+    if (p[i] == net_wm_state_fullscreen)
+      c->fullscreen = 1;
+  XFree((char *) p);
+}
+
+void setwmstate(Client *c)
+{
+  if (c->fullscreen) {
+    Atom data[] = {
+      net_wm_state_fullscreen
+    };
+    XChangeProperty(dpy, c->window, net_wm_state, XA_ATOM, 32, PropModeReplace,
+                   (unsigned char *)data, 1);
+  } else
+    XDeleteProperty(dpy, c->window, net_wm_state);
+}
+
+
 
 void sendcmessage(Window w, Atom a, long x)
 {
@@ -280,9 +327,18 @@ void handle_client_message(Client *c, XClientMessageEvent *xcme)
 	i->mapped=0;
 	deselecticon(i);
 	XMapWindow(dpy, c->window);
-	if(c->parent!=c->scr->root)
+	if(c->parent!=c->scr->root && !c->fullscreen)
 	  XMapRaised(dpy, c->parent);
 	setclientstate(c, NormalState);
+      }
+  } else if (xcme->message_type == net_wm_state) {
+    int action=xcme->data.l[0];
+    Atom prop=xcme->data.l[1];
+    if (prop == net_wm_state_fullscreen)
+      switch (action) {
+      case 0: fullscreen(c, 0); break; /* _NET_WM_STATE_REMOVE */
+      case 1: fullscreen(c, 1); break; /* _NET_WM_STATE_ADD */
+      case 2: fullscreen(c, !c->fullscreen); break; /* _NET_WM_STATE_TOGGLE */
       }
   }
 }
