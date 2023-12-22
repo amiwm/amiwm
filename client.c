@@ -130,13 +130,10 @@ void checksizehints(Client *c)
   long supplied;
 
   XGetWMNormalHints(dpy, c->window, c->sizehints, &supplied);
-
-
   if(!(c->sizehints->flags&PMinSize))
     c->sizehints->min_width=c->sizehints->min_height=0;
-  if(!(c->sizehints->flags&PMaxSize)) {
+  if(!(c->sizehints->flags&PMaxSize))
     c->sizehints->max_width=c->sizehints->max_height=1<<30;
-  }
   if(!(c->sizehints->flags&PResizeInc))
     c->sizehints->width_inc=c->sizehints->height_inc=1;
   if(c->sizehints->flags&PBaseSize) {
@@ -150,6 +147,38 @@ void checksizehints(Client *c)
   if(c->sizehints->flags&PWinGravity) c->gravity=c->sizehints->win_gravity;
 }
 
+void open_fscrn(Client *c)
+{
+  XUnmapWindow(dpy, c->parent);
+  c->fsscr = scr = openscreen(NULL, scr->root);
+  c->reparenting = 1;
+  XReparentWindow(dpy, c->window, scr->back, 0, 0);
+  XResizeWindow(dpy, c->window, scr->width, scr->height);
+  realizescreens();
+  scr = c->fsscr;
+#ifdef USE_FONTSETS
+  XStoreName(dpy, scr->back, c->title);
+#else
+  XSetWMName(dpy, scr->back, &c->title);
+#endif
+  screentoback();
+}
+
+void close_fscrn(Client *c, int state)
+{
+  if (c->fsscr == NULL)
+    return;
+  XReparentWindow(dpy, c->window, c->parent, 4, c->scr->bh);
+  XResizeWindow(dpy, c->window, c->pwidth-c->framewidth, c->pheight-c->frameheight);
+  XLowerWindow(dpy, c->window);
+  scr = c->fsscr;
+  closescreen();
+  c->fsscr = NULL;
+  scr = c->scr;
+  if (state != IconicState)
+    XMapWindow(dpy, c->parent);
+}
+
 void setclientstate(Client *c, int state)
 {
   long data[2];
@@ -157,6 +186,13 @@ void setclientstate(Client *c, int state)
   data[0] = (long) state;
   data[1] = (long) None;
 
+  if (c->fullscreen) {
+    if (state != NormalState && c->state == NormalState) {
+      close_fscrn(c, state);
+    } else if (state == NormalState && c->state != NormalState) {
+      open_fscrn(c);
+    }
+  }
   c->state = state;
   XChangeProperty(dpy, c->window, wm_state, wm_state, 32,
 		  PropModeReplace, (unsigned char *)data, 2);
@@ -188,6 +224,7 @@ Client *createclient(Window w)
   c = (Client *)calloc(1, sizeof(Client));
   c->sizehints = XAllocSizeHints();
   c->scr = scr;
+  c->fsscr = NULL;
   c->window = w;
   c->parent = scr->root;
   c->old_bw = attr.border_width;
@@ -195,6 +232,7 @@ Client *createclient(Window w)
   c->state = WithdrawnState;
   c->gravity = NorthWestGravity;
   c->reparenting = 0;
+  c->fullscreen = 0;
   XSelectInput(dpy, c->window, PropertyChangeMask);
 #ifdef USE_FONTSETS
   {
@@ -228,7 +266,7 @@ Client *createclient(Window w)
     c->zoomw=scr->width-c->sizehints->base_width;
     if (b & Psizeright)
       c->zoomw-=22;
-    else
+    else 
       c->zoomw-=8;
     c->zoomw-=c->zoomw%c->sizehints->width_inc;
     c->zoomw+=c->sizehints->base_width;
@@ -270,6 +308,9 @@ void rmclient(Client *c)
 	    break;
 	  }
 
+    if ((scr = c->fsscr))
+      closescreen();
+    scr = c->scr;
     if(c->active) {
       if(!menuactive)
 	setfocus(None);
@@ -393,4 +434,26 @@ reparent_client(Scrn *s, Client *client)
       XReparentWindow(dpy, client->parent, s->back, client->x, client->y);
     setstringprop(client->window, amiwm_screen, s->deftitle);
     sendconfig(client);
+}
+
+
+void fullscreen(Client *c, int fs)
+{
+  if (fs == c->fullscreen)
+    return;
+  if (c->state != NormalState) {
+    c->fullscreen = fs;
+    setwmstate(c);
+    return;
+  }
+
+  if (fs) {
+    open_fscrn(c);
+    c->fullscreen = 1;
+  } else {
+    close_fscrn(c, c->state);
+    c->fullscreen = 0;
+    setclientstate(c, NormalState);
+  }
+  setwmstate(c);
 }

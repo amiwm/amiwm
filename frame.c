@@ -102,7 +102,8 @@ void resizeclientwindow(Client *c, int width, int height)
       spread_top_gadgets(c);
     if(c->resize)
       XMoveWindow(dpy, c->resize, c->pwidth-18, c->pheight-10);
-    XResizeWindow(dpy, c->window, c->pwidth-c->framewidth, c->pheight-c->frameheight);
+    if (!c->fullscreen)
+      XResizeWindow(dpy, c->window, c->pwidth-c->framewidth, c->pheight-c->frameheight);
     if(c->shaped)
       reshape_frame(c);
     sendconfig(c);
@@ -180,6 +181,7 @@ void reparent(Client *c)
   int cargc;
   int size_changed = 0;
 
+  getwmstate(c);
   if(XGetTransientForHint(dpy, c->window, &leader) &&
      !XFindContext(dpy, leader, client_context, (XPointer *)&lc))
     c->scr = lc->scr;

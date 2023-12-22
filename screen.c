@@ -68,7 +68,7 @@ void setvirtualroot(Scrn *s)
   }
 }
 
-Scrn *getscreenbyroot(Window w);
+Scrn *getscreenbyrootext(Window w, int include_fs);
 
 void screentoback(void)
 {
@@ -77,7 +77,7 @@ void screentoback(void)
   if(scr == get_front_scr()) {
     XLowerWindow(dpy, scr->back);
     set_front_scr(scr->behind);
-  } else if(scr==getscreenbyroot(scr->root)) {
+  } else if(scr==getscreenbyrootext(scr->root, 1)) {
     XLowerWindow(dpy, scr->back);
     scr->upfront->behind=scr->behind;
     scr->behind->upfront=scr->upfront;
@@ -98,7 +98,7 @@ void screentoback(void)
     get_front_scr()->upfront=scr;
     set_front_scr(scr);
   }
-  if((f = getscreenbyroot(scr->root))) {
+  if((f = getscreenbyrootext(scr->root, 0))) {
     init_dri(&f->dri, dpy, f->root, f->cmap, True);
     setvirtualroot(f);
   }
@@ -179,8 +179,10 @@ void closescreen(void)
 
   XDeleteContext(dpy,scr->menubardepth,screen_context);
   XDestroyWindow(dpy,scr->menubardepth);
-  XDeleteContext(dpy,scr->menubarparent,screen_context);
-  XDestroyWindow(dpy,scr->menubarparent);
+  if (scr->menubarparent != None) {
+    XDeleteContext(dpy,scr->menubarparent,screen_context);
+    XDestroyWindow(dpy,scr->menubarparent);
+  }
   XDeleteContext(dpy,scr->menubar,screen_context);
   XDestroyWindow(dpy,scr->menubar);
   if(scr->inputbox != None) {
@@ -348,6 +350,7 @@ void realizescreens(void)
 	XMapWindow(dpy, scr->inputbox);
       }
 
+      setsupports(scr->root);
       XSelectInput(dpy, scr->root,
 		   SubstructureNotifyMask|SubstructureRedirectMask|
 		   KeyPressMask|KeyReleaseMask|
@@ -358,9 +361,12 @@ void realizescreens(void)
 		     KeyPressMask|KeyReleaseMask|
 		     ButtonPressMask|ButtonReleaseMask);
 
-      XStoreName(dpy, scr->back, scr->title);
+      if (scr->title)
+        XStoreName(dpy, scr->back, scr->title);
       XLowerWindow(dpy, scr->back);
       XMapWindow(dpy, scr->back);
+      if (!scr->deftitle)
+        scr->realized = 1;
     }
     scr=scr->behind;
   } while(scr != get_front_scr());
@@ -389,14 +395,19 @@ Scrn *getscreen(Window w)
   return get_front_scr();
 }
 
-Scrn *getscreenbyroot(Window w)
+Scrn *getscreenbyrootext(Window w, int include_fs)
 {
   Scrn *s = get_front_scr();
   if(s)
     do {
-      if(s->root == w)
+      if(s->root == w && (include_fs || s->deftitle))
 	return s;
       s=s->behind;
     } while(s != get_front_scr());
   return NULL;
+}
+
+Scrn *getscreenbyroot(Window w)
+{
+  return getscreenbyrootext(w, 0);
 }

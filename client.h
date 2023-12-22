@@ -16,7 +16,7 @@ struct _Scrn;
  */
 typedef struct _Client {
   struct _Client *next;
-  struct _Scrn *scr;
+  struct _Scrn *scr, *fsscr;
   struct _Icon *icon;
   struct module *module;
   int wflags;
@@ -27,7 +27,7 @@ typedef struct _Client {
   int x, y, pwidth, pheight, dragw, framewidth, frameheight;
   int zoomx, zoomy, zoomw, zoomh;
   int old_bw, proto, state, gravity, reparenting;
-  int active, shaped;
+  int active, shaped, fullscreen;
 #ifdef USE_FONTSETS
   char *title;
 #else
@@ -52,6 +52,6 @@ extern void grav_map_frame_to_win(Client *, int, int, int *, int *);
 extern void grav_map_win_to_frame(Client *, int, int, int *, int *);
 extern void setclientstate(Client *, int);
 extern void reparent_client(struct _Scrn *s, Client *client);
-
+extern void fullscreen(Client *, int);
 
 #endif
