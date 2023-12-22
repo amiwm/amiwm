@@ -1,7 +1,7 @@
 %option noyywrap
 %{
 #include <stdio.h>
-#include "gram.h"
+#include "gram.tab.h"
 extern char *progname;
 extern int ParseError;
 extern FILE *rcfile;

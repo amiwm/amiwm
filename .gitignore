@@ -2,7 +2,9 @@
 *.o
 Makefile
 
+/Filesystem
 /Keyboard
+/Launcher
 /Xinitrc
 /Xsession
 /Xsession2
@@ -13,11 +15,11 @@ Makefile
 /config_util
 /configure
 /executecmd
-/gram.c
-/gram.h
+/gram.tab.c
+/gram.tab.h
 /kbdlexer.c
-/kbdmodule.c
-/kbdmodule.h
+/kbdmodule.tab.c
+/kbdmodule.tab.h
 /lex.c
 /ppmtoinfo
 /requestchoice
