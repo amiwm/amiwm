@@ -78,8 +78,11 @@ filesystem.o: joke_fs.c
 ppmtoinfo.o: ppmtoinfo.c
 	$(CC) -c $(CPPFLAGS) $(ALL_CFLAGS) -DAMIWM_HOME=\"$(AMIWM_HOME)\" $<
 
-%.tab.c %.tab.h: %.y
-	$(YACC) -b $* -d $<
+gram.tab.c gram.tab.h: gram.y
+	$(YACC) -b gram -d gram.y
+
+kbdmodule.tab.c kbdmodule.tab.h: kbdmodule.y
+	$(YACC) -b kbdmodule -d kbdmodule.y
 
 lex.c: lex.l
 	$(LEX) -t $< > lex.c
