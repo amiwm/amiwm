@@ -91,6 +91,7 @@ Scrn *dragscreen=NULL, *menuactive=NULL;
 static int d_offset=0;
 static fd_set master_fd_set;
 static int max_fd=0;
+static Window *checkwins;
 char *free_screentitle=NULL;
 char *x_server=NULL;
 int shape_event_base, shape_error_base, shape_extn=0;
@@ -857,11 +858,15 @@ static void update_clock(void *dontcare)
 
 void cleanup()
 {
+  int sc;
   extern void free_prefs();
   struct coevent *e;
   flushmodules();
   flushclients();
   scr = get_front_scr();
+  for(sc=0; checkwins!=NULL && sc<ScreenCount(dpy); sc++)
+    XDestroyWindow(dpy, checkwins[sc]);
+  free(checkwins);
   while(scr)
     closescreen();
   free_prefs();
@@ -966,13 +971,19 @@ int main(int argc, char *argv[])
 
   lookup_keysyms(dpy, &meta_mask, &switch_mask);
 
-  for(sc=0; sc<ScreenCount(dpy); sc++)
-    if(sc==DefaultScreen(dpy) || prefs.manage_all)
-      if(!getscreenbyroot(RootWindow(dpy, sc))) {
+  checkwins = calloc(ScreenCount(dpy), sizeof(*checkwins));
+  for(sc=0; sc<ScreenCount(dpy); sc++) {
+    if(sc==DefaultScreen(dpy) || prefs.manage_all) {
+      Window root = RootWindow(dpy, sc);
+      checkwins[sc] = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, 1, 1);
+      setsupports(scr->root, checkwins[sc]);
+      if(!getscreenbyroot(root)) {
 	char buf[64];
 	sprintf(buf, "Screen.%d", sc);
-	openscreen((sc? strdup(buf):"Workbench Screen"), RootWindow(dpy, sc));
+	openscreen((sc? strdup(buf):"Workbench Screen"), root);
       }
+    }
+  }
   /*
   if(!front)
     openscreen("Workbench Screen", DefaultRootWindow(dpy));

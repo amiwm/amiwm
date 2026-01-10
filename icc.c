@@ -16,15 +16,17 @@ extern struct Library *XLibBase;
 
 extern void redraw(Client *, Window);
 
+Atom utf8_string, net_wm_name;
 Atom wm_state, wm_change_state, wm_protocols, wm_delete, wm_take_focus;
 Atom wm_colormaps, wm_name, wm_normal_hints, wm_hints, wm_icon_name, wm_class;
-Atom net_supported, net_wm_state, net_wm_state_fullscreen;
+Atom net_supporting_wm_check, net_supported, net_wm_state, net_wm_state_fullscreen;
 Atom amiwm_screen, swm_vroot, amiwm_wflags, amiwm_appiconmsg, amiwm_appwindowmsg;
 
 extern Display *dpy;
 
 void init_atoms()
 {
+  utf8_string = XInternAtom(dpy, "UTF8_STRING", False);
   wm_state = XInternAtom(dpy, "WM_STATE", False);
   wm_change_state = XInternAtom(dpy, "WM_CHANGE_STATE", False);
   wm_protocols = XInternAtom(dpy, "WM_PROTOCOLS", False);
@@ -37,6 +39,8 @@ void init_atoms()
   wm_icon_name = XInternAtom(dpy, "WM_ICON_NAME", False);
   wm_class = XInternAtom(dpy, "WM_CLASS", False);
   net_supported = XInternAtom(dpy, "_NET_SUPPORTED", False);
+  net_supporting_wm_check = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False);
+  net_wm_name = XInternAtom(dpy, "_NET_WM_NAME", False);
   net_wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
   net_wm_state_fullscreen = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
   amiwm_screen = XInternAtom(dpy, "AMIWM_SCREEN", False);
@@ -46,14 +50,21 @@ void init_atoms()
   amiwm_appwindowmsg = XInternAtom(dpy, "AMIWM_APPWINDOWMSG", False);
 }
 
-void setsupports(Window root)
+void setsupports(Window root, Window checkwin)
 {
   Atom atoms[] = {
-    net_wm_state_fullscreen
+    net_wm_state,
+    net_wm_state_fullscreen,
   };
   XChangeProperty(dpy, root, net_supported, XA_ATOM, 32,
     PropModeReplace, (unsigned char *)atoms,
     sizeof(atoms)/sizeof(atoms[0]));
+  XChangeProperty(dpy, root, net_supporting_wm_check, XA_WINDOW, 32,
+    PropModeReplace, (void *)(Window[]){checkwin}, 1);
+  XChangeProperty(dpy, checkwin, net_supporting_wm_check, XA_WINDOW, 32,
+    PropModeReplace, (void *)(Window[]){checkwin}, 1);
+  XChangeProperty(dpy, checkwin, net_wm_name, utf8_string, 8,
+    PropModeReplace, (void *)"AmiWM", 5);
 }
 
 void setstringprop(Window w, Atom a, char *str)
