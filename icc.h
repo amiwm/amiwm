@@ -6,7 +6,7 @@
 #include "client.h"
 
 extern void init_atoms(void);
-extern void setsupports(Window);
+extern void setsupports(Window, Window);
 extern void sendcmessage(Window, Atom, long);
 extern void getproto(Client *c);
 extern void getwmstate(Client *c);
