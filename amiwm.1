@@ -1,193 +1,622 @@
-.\" @(#)amiwm.1
-'\"macro stdmacro
-.nr X
-.TH amiwm 1 "14 Jul 2017"
-.SH NAME
-amiwm \- Amiga Workbench-like X Window Manager
-
-.SH SYNOPSIS
-amiwm
-
-.SH DESCRIPTION
-.I amiwm
-is an X Window manager that tries to make your workstation look like
-an Amiga\*R.
-
-.SH OPTIONS
-.I Amiwm 
-is configurable with a $HOME/\.amiwmrc-file containing some or all
-of the following options:
-.SH FastQuit:  {yes|no}
-
-Specifies whether amiwm should quit directly when the Quit
+.Dd January 15, 2026
+.Dt AMIWM 1
+.Os
+.
+.Sh NAME
+.Nm amiwm
+.Nd Amiga Workbench-like X Window Manager
+.
+.Sh SYNOPSIS
+.Nm
+.
+.Sh DESCRIPTION
+.Nm
+is an X Window manager that tries to make your workstation look like an Amiga\*R.
+.
+.Pp
+Windows are controlled with the pointer as follows:
+.Bl -column "Maximize button" "Double-click" XXXX
+.It Sy Target           Ta Sy Operation  Ta Sy Description
+.It Anywhere            Ta Left-click    Ta If the
+.Ic Focus
+police is
+.Cm clicktotype ,
+focus window.
+If the
+.Ic AutoRaise
+option is on, raise it as well.
+.It Anywhere            Ta Hover         Ta If the
+.Ic Focus
+police is either
+.Cm followmouse
+or
+.Cm sloppy ,
+focus window.
+If the
+.Ic AutoRaise
+option is on, raise it as well.
+.It Titlebar            Ta Left-drag     Ta Move window.
+.It Titlebar            Ta Double-click  Ta Raise window.
+.It Close button        Ta Left-click    Ta Close application.
+.It Iconify button      Ta Left-click    Ta Iconify window.
+.It Maximize button     Ta Left-click    Ta Maximize window.
+.It Raise button        Ta Left-click    Ta Raise window.
+.It Resize handle       Ta Left-click    Ta Resize window.
+.El
+.
+.Pp
+.Nm
+can minimize windows into icons that are gathered on a screen.
+Icons controlled with the pointer as follows:
+.Bl -column "Icon" "Double-click" XXXX
+.It Sy Target   Ta Sy Operation  Ta Sy Description
+.It Icon        Ta Double-click  Ta De-iconify window.
+.It Icon        Ta Left-drag     Ta Move icon around the screen
+or into another screen.
+(The only way to move a window into another screen is by iconifying it,
+moving the icon,
+and then de-iconifying it.)
+.El
+.
+.Pp
+.Nm
+can keep several workbench screens (or just "screens" for short)
+where windows are displayed.
+Each screen has a titlebar above it displaying its name, and a few widgets.
+Screens are controlled with the pointer as follows:
+.Bl -column "Raise button" "Right-release" XXXX
+.It Sy Target           Ta Sy Operation  Ta Sy Description
+.It Titlebar            Ta Left-drag     Ta Move screen up/down
+to reveal/hide other screens.
+.It Titlebar            Ta Right-press   Ta Reveal the menus.
+.It Menu                Ta Right-drag    Ta Navigate through menus.
+.It Menu entry          Ta Right-release Ta Activate menu entry.
+.It Icon                Ta Double-click  Ta Launch program
+(see
+.Sx Launcher module
+below).
+.It Raise button        Ta Left-click    Ta Raise screen.
+.El
+.
+.Pp
+Configuration utility is not yet available.
+To configure amiwm, create and edit
+.Pa .amiwmrc
+file in your home directory.
+The configuration file is described at the
+.Sx CONFIGURATION
+section below.
+.
+.Sh CONFIGURATION
+.Pa "~/.amiwmrc"
+is the configuration file for
+.Nm .
+.
+.Pp
+Empty lines and lines beginning with
+.Sq #
+are ignored.
+Each other line is a configuration option and its arguments.
+The options are as follows:
+.Bl -column highlighttextpen def_tool.info XXXXXX
+.It Option              Ta Default              Ta Arguments
+.It Ic AutoRaise        Ta Cm off               Ta Ar boolean
+.It Ic BatteryInfo      Ta Cm off               Ta Ar boolean
+.It Ic CustomIconsOnly  Ta Cm off               Ta Ar boolean
+.It Ic DefaultIcon      Ta Cm def_tool.info     Ta Qq Ar filename
+.It Ic FastQuit         Ta Cm off               Ta Ar boolean
+.It Ic Focus            Ta Cm followmouse       Ta Cm followmouse Ns | Ns Cm sloppy Ns | Ns Cm clicktotype
+.It Ic ForceMove        Ta Cm manual            Ta Cm manual Ns | Ns Cm auto Ns | Ns Cm always
+.It Ic IconDir          Ta ""                   Ta Qq Ar path
+.It Ic IconFont         Ta ""                   Ta Qq Ar fontname
+.It Ic IconPalette      Ta Cm system            Ta Cm system Ns | Ns Cm magicwb Ns | Ns Cm schwartz Ns | Ns Ar filename
+.It Ic InterScreenGap   Ta 0                    Ta Ar number
+.It Ic Module           Ta ""                   Ta Qo Ar name Qc Op Qq initstring
+.It Ic ModulePath       Ta ""                   Ta Qq Ar path Ns Op Cm :\& Ns Ar path ...
+.It Ic Screen           Ta ""                   Ta Oo Ar number Oc Ar screenname
+.It Ic ScreenFont       Ta ""                   Ta Qq Ar fontname
+.It Ic ShortLabelIcons  Ta Cm off               Ta Ar boolean
+.It Ic SizeBorder       Ta Cm right             Ta Cm right Ns | Ns Cm bottom Ns | Ns Cm both Ns | Ns Cm none
+.It Ic TitleBarClock    Ta Cm ...               Ta Qq Ar boolean
+.It Ic TitleClockFormat Ta Qq "%c"              Ta Oo Ar number Oc Ar timeformat
+.It Ic ToolItem         Ta ""                   Ta Qo Ar name Qc Cm { Ar ToolItem Ns s ... Cm }
+.It Ic ToolItem         Ta ""                   Ta Qo Ar name Qc Qo Ar command Qc Qo Ar hotkey Qc
+.It Ic ToolItem         Ta ""                   Ta Ic Separator
+.It Ic backgroundpen    Ta Cm ...               Ta Qq Ar colorname
+.It Ic barblockpen      Ta Cm ...               Ta Qq Ar colorname
+.It Ic bardetailpen     Ta Cm ...               Ta Qq Ar colorname
+.It Ic bartrimpen       Ta Cm ...               Ta Qq Ar colorname
+.It Ic blockpen         Ta Cm ...               Ta Qq Ar colorname
+.It Ic detailpen        Ta Cm ...               Ta Qq Ar colorname
+.It Ic fillpen          Ta Cm ...               Ta Qq Ar colorname
+.It Ic filltextpen      Ta Cm ...               Ta Qq Ar colorname
+.It Ic highlighttextpen Ta Cm ...               Ta Qq Ar colorname
+.It Ic shadowpen        Ta Cm ...               Ta Qq Ar colorname
+.It Ic shinepen         Ta Cm ...               Ta Qq Ar colorname
+.It Ic style            Ta ""                   Ta Cm "{" Cm class Qo Ar classname Qc Cm icon Qo Ar filename Qc Cm "}"
+.It Ic textpen          Ta Cm ...               Ta Qq Ar colorname
+.El
+.
+.Pp
+Some options, like
+.Ic ToolItem ,
+have different syntaxes,
+each with different sets of arguments.
+Some options, like one of the forms of
+.Ic ToolItem ,
+expect as argument a block of options, one per line, around curly braces.
+.
+.Pp
+For the arguments,
+.Ar boolean
+can be
+.Cm on Ns | Ns Cm off
+or
+.Cm true Ns | Ns Cm false
+or
+.Cm yes Ns | Ns Cm no .
+.
+.Ss General options
+.Bl -tag -width Ds
+.It Ic AutoRaise Ar bool
+Selects whether windows will automatically be moved to the front when they are activated.
+.
+.It Ic FastQuit Ar boolean
+Specifies whether amiwm should quit directly when the
+.Em Quit
 menu item is selected, rather than popping up a requester.
-(on/off or true/false can be used instead of yes/no.)
-
-.SH SizeBorder {right|bottom|both|none}
-
-Specifies which border should be enlarged when a sizegadget is present.
-
-.SH ForceMove {manual|auto|always}
-
-Enables you to move windows outside the perimeter of the root window
-when pressing shift, when trying to drag at least 25% of the window
-ofscreen, or always, respectively.
-
-.SH IconDir path
-
-Specifies a directory in which amiwm will look for icons.
-
-.SH DefaultIcon name
-
-Gives the filename of the .info file to use as a default icon.
-It is relative to the IconDir.
-
-.SH IconPalette {system|magicwb|schwartz|\f1\*(lq\f3filename"}
-
-Selects either the Workbench\*R default palette, or the MagicWorkbench
-standard palette for use with icons.  The third option is a 16 color
-palette used on the "Eric Schwartz Productions CD Archive".  Alternatively,
-the filename of a PPM file representing the palette to use can be used.
-
-.SH ScreenFont \f1\*(lq\f3fontname"
-
+.
+.It Ic Focus Cm followmouse Ns | Ns Cm sloppy Ns | Ns Cm clicktotype
+Sets the policy by which windows are given focus:
+.Bl -tag -width followmouse
+.It Cm followmouse
+The window that contains the mouse pointer will have focus.
+This is the default.
+.It Cm sloppy
+The window that had focus last will keep it when the pointer is not over a window.
+.It Cm clicktotype
+You have to explicitly give focus to windows by clicking in them.
+This is the original AmigaOS policy.
+.El
+.
+.It Ic ForceMove Cm manual Ns | Ns Cm auto Ns | Ns Cm always
+Allows you to move windows outside the perimeter of the root window when pressing shift,
+when trying to drag at least 25% of the window ofscreen,
+or always, respectively.
+.El
+.
+.Ss Windows decorations
+.Bl -tag -width Ds
+.It Ic ScreenFont Qq Ar fontname
 Selects a font to use for windowtitles etc.
-
-.SH IconFont \f1\*(lq\f3fontname"
-
-Selects a font for icontitles.
-
-.SH {detailpen|blockpen|textpen|shinepen|shadowpen|fillpen|filltextpen|
-        backgroundpen|highlighttextpen|bardetailpen|barblockpen|
-        bartrimpen} \f1\*(lq\f3colorname"
-
-Modifies the colour scheme for the window manager.
-
-.SH CustomIconsOnly {yes|no}
-
+.
+.It Ic SizeBorder Cm right Ns | Ns Cm bottom Ns | Ns Cm both Ns | Ns Cm none
+Specifies which border should be enlarged when a sizegadget is present.
+.
+.It Ic detailpen Qq Ar colorname
+TODO.
+.
+.It Ic blockpen Qq Ar colorname
+TODO.
+.
+.It Ic textpen Qq Ar colorname
+TODO.
+.
+.It Ic shinepen Qq Ar colorname
+TODO.
+.
+.It Ic shadowpen Qq Ar colorname
+TODO.
+.
+.It Ic fillpen Qq Ar colorname
+TODO.
+.
+.It Ic filltextpen Qq Ar colorname
+TODO.
+.
+.It Ic backgroundpen Qq Ar colorname
+TODO.
+.
+.It Ic highlighttextpen Qq Ar colorname
+TODO.
+.
+.It Ic bardetailpen Qq Ar colorname
+TODO.
+.
+.It Ic barblockpen Qq Ar colorname
+TODO.
+.
+.It Ic bartrimpen Qq Ar colorname
+TODO.
+.El
+.
+.Ss Icon options
+.Bl -tag -width Ds
+.It Ic CustomIconsOnly Ar boolean
 This prevent applications to display their own icons when in iconified state.
 Only icons defined in amiwmrc for each apps will be used.
-Because apps own icon are too different from one eachother.
-They comes in various sizes and themes. Some icons will be 32x32,
-while some other will be a 128x128 or even bigger .. By using this option,
-You have the possibility to decide which icon should be used for each app.  
-If no custom icons are defined at all, the def_tool.info will be used for 
-all iconified apps. Format is: style { class "myClass" icon "myIcon.info" }
-To find out a given program's class, use "xlsclients -l" to list all opened
-applications, and then use "xprop -id <0x0000000>" to list a 
-given app's properties. Use either WM_CLASS or WM_ICON_NAME strings in amiwmrc.
-
-.SH ShortLabelIcons {yes|no}
-
-This limit the length of the text for iconified programs. For example, if this 
-option is activated, an iconified program text will be limited to 8 chars + ".."
-Use this option if you don't want iconified program text to be loong strings..
-
-.SH TitleBarClock {yes|no}
-
-Enables a clock in the titlebar.  It displays the date and time.
-
-.SH TitleClockFormat [<number>] "time string"
-
-This lets you choose a new format to display the Title Bar Clock.
-The time string is formatted with the standard strftime() parameters.
-The default is "%c".  It has been found that "%a %b %e %Y   %l:%M %p" works
-well too.  Number is the update interval in seconds.  
-
-.SH BatteryInfo {yes|no}
-
+.
+.Pp
+Because apps' own icons are too different from one eachother,
+they comes in various sizes and themes.
+Some icons will be 32x32, while some other will be a 128x128 or even bigger.
+By using this option,
+You can use the
+.Ic style
+option below to set which icon should be used for each app.
+If no custom icons are defined at all, the
+.Pa def_tool.info will
+be used for all iconified apps.
+.
+.It Ic DefaultIcon Qq Ar filename
+Set
+.Ar filename
+of the
+.Pa .info
+file as default icon.
+It is relative to the
+.Ic IconDir .
+Default value
+.Qq Pa def_tool.info .
+.
+.It Ic IconDir Qq Ar path
+Directory in which amiwm will look for icons.
+.
+.It Ic IconFont Qq Ar fontname
+Font for icontitles.
+.
+.It Ic IconPalette Cm system Ns | Ns Cm magicwb Ns | Ns Cm schwartz Ns | Ns Ar filename
+Selects either the Workbench\*R default palette,
+or the MagicWorkbench standard palette for use with icons.
+The third option is a 16 color palette used on the "Eric Schwartz Productions CD Archive".
+Alternatively, the
+.Ar filename
+of a PPM file representing the palette to use can be used.
+.
+.It Ic ShortLabelIcons Ar boolean
+This limit the length of the text for iconified programs.
+For example, if this option is activated,
+an iconified program text will be limited to 8 chars + ".."
+Use this option if you don't want iconified program text to be loong strings.
+.
+.It Ic style Cm "{" Cm class Qo Ar classname Qc Cm icon Qo Ar filename Qc Cm "}"
+Set the icon
+.Ar filename
+for windows of the given class.
+To find out a program's class, run
+.Dl $ xlsclients -l
+to list all opened applications,
+and then run
+.Dl $ xprop -id <0x0000000>
+to list a given app's properties.
+Use either
+.Dv WM_CLASS
+or
+.Dv WM_ICON_NAME
+strings in amiwmrc.
+.El
+.
+.Ss TitleBar and MenuBar
+.Bl -tag -width Ds
+.It Ic BatteryInfo Ar boolean
 This lets you display battery information on the menu bar.
-It reqiures a module (such as Battery) to gather current battery status
-and push it into amiwm to display.
-
-.SH ToolItem \f1\*(lq\f3name" \f1\*(lq\f3command" \f1\*(lq\f3hotkey"
-
-Adds an item in the Tools menu with the specified name, which executes
-the command when selected.  A string containing a single uppercase letter
-may be specified as the third argument, making this letter a hotkey for the
-item.
-
-.SH ToolItem Separator
-
-Inserts a separator bar in the Tools menu.
-
-.SH ToolItem \f1\*(lq\f3name" { <tool item commands>}
-
-Create ToolItem:s in a submenu with the specified name.  It is not legal
-to create a submenu inside another submenu.
-
-.SH Screen [<number>] \f1\*(lq\f3name"
-
-Create a new screen with the specified name.  It will be placed below all
-earlier created screens.  To move a window between two screens, iconify it
-and drag the icon over to the other screen.  If the second argument is given,
-this screen is placed on the corresponding X screen.
-
-.SH ModulePath \f1\*(lq\f3path(:path...)"
- 
+It reqiures a module (such as Battery)
+to gather current battery status and push it into amiwm to display.
+.
+.It Ic TitleBarClock Ar boolean
+Enables a clock in the titlebar.
+It displays the date and time.
+.
+.It Ic TitleClockFormat Oo Ar number Oc Ar timeformat
+This lets you choose a new format to display the Title Bar Clock.
+The time string is formatted with the standard
+.Xr strftime 3
+parameters.
+The default is
+.Dq "%c" .
+It has been found that
+.Dq "%a %b %e %Y   %l:%M %p"
+works well too.
+Number is the update interval in seconds.
+.
+.It Ic ToolItem Qo Ar name Qc Qo Ar command Qc Qo Ar hotkey Qc
+Adds an item in the
+.Em Tools
+menu with the specified
+.Ar name ,
+which executes the given
+.Ar command
+when selected.
+A string containing a single uppercase letter may be specified as the third argument,
+making this letter a hotkey for the item.
+.
+.It Ic ToolItem Qo Ar name Qc Cm { Ar ToolItem Ns s ... Cm }
+Create
+.Ar ToolItem Ns s
+in a submenu with the specified name.
+It is not legal to create a submenu inside another submenu.
+.
+.It Ic ToolItem Ic Separator
+Inserts a separator bar in the
+.Em Tools
+menu.
+.El
+.
+.Ss Screen and modules
+.Bl -tag -width Ds
+.It Ic InterScreenGap Ar number
+Sets the size in number of pixels of the "video DMA off" area
+that appears between screens when they are dragged.
+.
+.It Ic ModulePath Qq Ar path Ns Op Cm :\& Ns Ar path ...
 Sets one or more directories where amiwm will look for module binaries.
-The default is AMIWM_HOME.  Note that the module binaries cannot be
-shared amongst different architectures.
- 
-.SH Module \f1\*(lq\f3name" ["initstring"]
- 
-Start a module with the specified name.  If initstring is specified, it
-is sent to the module.  There are currently two modules shipped with
-amiwm; Background and Keyboard.  These are documented in the file
-MODULES.md.  If a module is limited to a single screen, like the
-Background module, the screen that was created last is used.
-
-.SH InterScreenGap number
- 
-Sets the size in number of pixels of the "video DMA off" area that appears
-between screens when they are dragged.
- 
-.SH AutoRaise {yes|no}
- 
-Selects whether windows will automatically be moved to the front when
-they are activated.
-
-.SH Focus {followmouse|sloppy|clicktotype}
-
-Sets the policy by which windows are given focus.  Followmouse is the
-default and means that the window that contains the mouse pointer will
-have focus.  Sloppy means that the window that had focus last will keep
-it when the pointer is not over a window.  ClickToType is the original AmigaOS
-policy in which you have to explicitly give focus to windows by clicking
-in them.
-
-
-.SH TROUBLESHOOTING
-
-The most likely reason for amiwm to crash is if it
-can't find its default icon, or if this is not accepted as a
-*.info file.  If this happens, amiwm _will_ dump core.  So make
-sure that either 'make install' runs successfully (in which case
-amiwm will know where its icon is), or that the file .amiwmrc
-contains a correct specification of the icon's location.
- 
-.SH CONFIGURATION FILES
-.nf
+The default is
+.Ev AMIWM_HOME .
+Note that the module binaries cannot be shared amongst different architectures.
+.
+.It Ic Module Qo Ar name Qc Op Qq initstring
+Start a module with the specified
+.Ar name .
+If
+.Ar initstring
+is specified, it is sent to the module.
+For the list of modules, see the section
+.Sx MODULES
+below.
+If a module is limited to a single screen
+(like the
+.Em Background
+module)
+the screen that was created last is used.
+.
+.It Ic Screen Oo Ar number Oc Qq Ar screenname
+Create a new screen with the given
+.Ar screenname .
+It will be placed below all earlier created screens.
+To move a window between two screens, iconify it and drag the icon over to the other screen.
+If the second argument is given, this screen is placed on the corresponding X screen.
+.El
+.
+.Sh MODULES
+.Nm
+has the following modules.
+.Ss Background module
+This module sets a background image (aka backdrop) on a screen.
+.
+.Pp
+Its
+.Ic Module
+command should come after the
+.Ic Screen
+command that it sets the backdrop of.
+Its
+.Ar initstring
+should be the
+.Ar filename
+of the picture.
+Example:
+.Bd -literal -offset indent
+Screen "Workbench Screen"
+Module "Background" "~/megumin.png"
+.Ed
+.
+.Pp
+The
+.Ic Background
+module is really a shell script that requires the
+program
+.Xr display 1
+from
+.Xr ImageMagick 1
+package.
+Currently, it doesn't support any standard imagemagick parameters.
+.
+.Ss Background_stretch module
+Same as the
+.Ic Background
+module, but stretches your backdrop to size of your screen.
+Example:
+.Bd -literal -offset indent
+Screen "Workbench Screen"
+Module "Background_stretch" "~/megumin.png"
+.Ed
+.
+.Pp
+Please note that this module will just stretch or downscale the image
+(depending on the size of the image) to your display ratio.
+If you don't want your image to look ugly, try the next module.
+.
+.Ss Background_resize module
+Same as the
+.Ic Background_stretch ,
+but it cares about your display ratio.
+For example, if you've got a 16:9 screen but your backdrop image is 4:3,
+it will get stretched, but it will still be displayed as a 4:3 picture.
+The remaining part of the screen will be used to show the same image, but repeated.
+.
+.Ss Keyboard module
+This module binds window manager functions to keys on the keyboard.
+.
+.Pp
+The
+.Ar initstring
+consists of one or more keybindings on the form
+.D1 Ar modifiers Ns < Ns Ar keysym Ns >: Ns Ar where Ns : Ns Ar func
+.
+.Pp
+Multiple keybindings are specified with spaces between them.
+The keybinding string can be broken into two lines with a backslash
+.Pq Sq \e
+and newline.
+.
+.Pp
+The components of a keybinding string are as follows:
+.Bl -tag -width "modifiers"
+.It Ar modifiers
+Modifiers is 0 or more of:
+.Cm Shift , Control , Meta , Lock ,
+.Cm Mod1 , Mod2 , Mod3 , Mod4 , Mod5 ,
+.Cm Button1 , Button2 , Button3 , Button4 , Button5 .
+.
+.Pp
+Modifiers are joined together using spaces.
+This can be confusing as it looks like keybindings are specified with spaces between them,
+but the parser actually handles this.
+.
+.Pp
+The modifiers listed must be pressed together with the key to activate the binding.
+.
+.It Ar keysym
+Keysym is a standard X keysym name, like F1 or Prior.
+.
+.Pp
+Keysyms are listed in the file
+.Pa /usr/include/X11/keysymdef.h
+(or another equivalent in your system).
+Just remove the
+.Ql XK_
+prefix before them.
+.
+.It Ar where
+It is either
+.Cm all ,
+or one or more of
+.Cm window , frame , icon , root
+separated with a bar
+.Pq Sq "|" .
+This controls in what areas of the screen that the key will be active.
+.
+.It Ar func
+The function to perform when the key is pressed.
+Currently the following are defined:
+.Bl -tag -compact -width "rotatescreens"
+.It Cm rotatescreens
+Move the frontmost screen to the back
+.It Cm raisewindow
+Rotate the bottom window to the top of the screen
+.It Cm lowerwindow
+Rotate the top window to the bottom of the screen
+.It Cm rotatewindow
+Move the current window to the next screen, rotate screen
+.It Cm front
+Move the window in which the key is pressed to the front
+.It Cm back
+Move the window in which the key is pressed to the back
+.It Cm iconify
+Iconify the window in which the key is pressed
+.El
+.El
+.
+.Pp
+Example:
+.Bd -literal -offset indent
+Module "Keyboard" "\e
+	Meta<F1>:window|frame:front\e
+	Meta<F2>:window|frame:iconify\e
+	Meta<F3>:window|frame:back"
+.Ed
+.
+.Pp
+This binds the keys Meta-F1, Meta-F2 and Meta-F3 to front, back and iconify respectively.
+They will only have effect inside windows and in window frames.
+(These are the only places that front/iconfy/back has effect anyway.)
+.
+.Pp
+An example with multiple modifiers in a single keybinding:
+.Bd -literal -offset indent
+Module "Keyboard" "Meta<M>:all:rotatescreens\e
+	Meta<Tab>:all:raisewindow\e
+	Control Meta<Tab>:all:lowerwindow"
+.Ed
+.
+.Ss Filesystem module
+This is an april fools joke module,
+but at least it's a starting point for building out an icon on the desktop!
+.Bd -literal -offset indent
+Module "Filesystem" "/path/to/open"
+.Ed
+.
+.Ss Launcher module
+This is a simple prototype launcher program
+that places an icon on a workbench screen which can be double clicked to run.
+Its
+.Ic Module
+command should come after the
+.Ic Screen
+command it places the launcher icon at.
+.
+.Pp
+The
+.Ar initstring
+has the following format:
+.D1 Ar label icon command Op args ...
+.
+.Pp
+Where:
+.Bl -tag -compact -width "command args..."
+.It "label"
+The launcher icon name.
+.It "icon"
+One of the
+.Pa .icon
+files in the
+.Ic IconDir .
+.It "command args..."
+The command and its arguments to run.
+.El
+.
+.Ss Battery module
+This is a simple battery state polling module that is being used
+during battery monitoring / menu toolbar development.
+.
+.Pp
+It's currently FreeBSD specific and based on what xbatt does to pull info from APM/ACPI.
+Adding Linux and other OS support shouldn't be too difficult.
+.Bd -literal -offset indent
+Module "Battery"
+.Ed
+.
+.Sh FILES
+.Bl -bullet -compact -width ""
+.It
 $HOME/.amiwmrc
+.It
 $AMIWM_HOME/system.amiwmrc
-.fi
-
-.SH COPYRIGHT NOTICES
-This program is distributed as freeware. The copyright remains with
-the author. See the file LICENSE for more information.
+.El
+.
+.Sh AUTHORS
+.Nm
+was originally written by
+.An Marcus Comstedt Aq Mt marcus@mc.pp.se
+.
+.Pp
+With contributions from:
+.An Scott Lawrence Aq Mt amiwm10@umlautllama.com
+.An Nicolas Sipieter Aq Mt freeeaks@gmail.com
+.An redsPL Aq Mt reds@sakamoto.pl
+.
+.Pp
+.Nm
+is distributed as freeware.
+The copyright remains with the author.
+See the file LICENSE for more information.
 Amiga and Workbench are registered trademarks of AMIGA International Inc.
-
-.SH ORIGINAL AUTHOR
-Marcus Comstedt,
-.I marcus@mc.pp.se
-
-.SH CONTRIBUTORS
-
-Scott Lawrence,
-.I amiwm10@umlautllama.com
-
-Nicolas Sipieter,
-.I freeeaks@gmail.com
-
-redsPL,
-.I reds@sakamoto.pl
+.
+.Sh CAVEATS
+The most likely reason for amiwm to crash is if it can't find its default icon,
+or if this is not accepted as a
+.Pa "*.info"
+file.
+If this happens, amiwm
+.Sy WILL
+dump core.
+.
+.Pp
+So make sure when installing that either
+.Ql "make install"
+runs successfully (in which case amiwm will know where its icon is),
+or that the file
+.Pa "~/.amiwmrc"
+contains an
+.Ic IconDir
+option with a correct specification of the icon's location.
