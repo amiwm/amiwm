@@ -350,7 +350,6 @@ void realizescreens(void)
 	XMapWindow(dpy, scr->inputbox);
       }
 
-      setsupports(scr->root);
       XSelectInput(dpy, scr->root,
 		   SubstructureNotifyMask|SubstructureRedirectMask|
 		   KeyPressMask|KeyReleaseMask|
