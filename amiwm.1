@@ -113,6 +113,8 @@ The options are as follows:
 .It Ic InterScreenGap   Ta 0                    Ta Ar number
 .It Ic Module           Ta ""                   Ta Qo Ar name Qc Op Qq initstring
 .It Ic ModulePath       Ta ""                   Ta Qq Ar path Ns Op Cm :\& Ns Ar path ...
+.It Ic OpaqueMove       Ta False                Ta Ar boolean
+.It Ic OpaqueResize     Ta False                Ta Ar boolean
 .It Ic Screen           Ta ""                   Ta Oo Ar number Oc Ar screenname
 .It Ic ScreenFont       Ta ""                   Ta Qq Ar fontname
 .It Ic ShortLabelIcons  Ta Cm off               Ta Ar boolean
@@ -183,6 +185,14 @@ This is the original AmigaOS policy.
 Allows you to move windows outside the perimeter of the root window when pressing shift,
 when trying to drag at least 25% of the window ofscreen,
 or always, respectively.
+.
+.It Ic OpaqueMove Ar bool
+Whether moving a window by dragging its titlebar should move the window in real time;
+or just move a frame indicating where the window will be after releasing the mouse button.
+.
+.It Ic OpaqueResize Ar bool
+Whether resizing a window by dragging its resize handle should resize the window in real time;
+or just resize a frame indicating the window's final size after releasing the mouse button.
 .El
 .
 .Ss Windows decorations
