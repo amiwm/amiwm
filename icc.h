@@ -24,4 +24,13 @@ extern Atom wm_state, wm_change_state, wm_protocols, wm_delete, wm_take_focus, w
 #define Psizeright 8
 #define Psizetrans 16
 
+
+#define mkcmessage(w, a, x, ...) (&(XEvent){.xclient = { \
+  .type = ClientMessage, \
+  .window = (w), \
+  .message_type = (a), \
+  .format = 32, \
+  .data.l = {(long)(x), CurrentTime, __VA_ARGS__}, \
+}})
+
 #endif

@@ -78,20 +78,6 @@ void setstringprop(Window w, Atom a, char *str)
     XSetTextProperty(dpy, w, &txtp, a);
 }
 
-XEvent *mkcmessage(Window w, Atom a, long x)
-{
-  static XEvent ev;
-
-  memset(&ev, 0, sizeof(ev));
-  ev.xclient.type = ClientMessage;
-  ev.xclient.window = w;
-  ev.xclient.message_type = a;
-  ev.xclient.format = 32;
-  ev.xclient.data.l[0] = x;
-  ev.xclient.data.l[1] = CurrentTime;
-  return &ev;
-}
-
 void getwmstate(Client *c)
 {
   Atom *p;
