@@ -353,3 +353,12 @@ void handle_client_message(Client *c, XClientMessageEvent *xcme)
       }
   }
 }
+
+Window get_transient_for(Window w)
+{
+  Window transient_for = None;
+
+  if (!XGetTransientForHint(dpy, w, &transient_for))
+    return None;
+  return transient_for;
+}

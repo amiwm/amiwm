@@ -41,7 +41,6 @@ extern void remove_fd_from_set(int);
 
 extern void raiselowerclient(Client *, int);
 extern void wberror(Scrn *, char *);
-extern void reparent(Client *);
 
 extern Icon *createappicon(struct module *, Window, char *,
 			   Pixmap, Pixmap, Pixmap, int, int);

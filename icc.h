@@ -15,6 +15,7 @@ extern void setstringprop(Window, Atom, char *);
 extern void propertychange(Client *, Atom);
 extern long _getprop(Window, Atom, Atom, long, char **);
 extern void getwflags(Client *);
+extern Window get_transient_for(Window);
 
 extern Atom wm_state, wm_change_state, wm_protocols, wm_delete, wm_take_focus, wm_colormaps, wm_hints, amiwm_screen, swm_vroot;
 
