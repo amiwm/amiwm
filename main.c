@@ -730,7 +730,6 @@ void do_icon_double_click(Scrn *scr)
 {
   extern Atom amiwm_appiconmsg;
   Icon *i, *next;
-  Client *c;
 
   for(i=scr->firstselected; i; i=next) {
     next=i->nextselected;
@@ -738,18 +737,7 @@ void do_icon_double_click(Scrn *scr)
       dispatch_event_to_broker(mkcmessage(i->window, amiwm_appiconmsg, 0),
 			       0, i->module);
     } else {
-      if(i->labelwin)
-	XUnmapWindow(dpy, i->labelwin);
-      if(i->window)
-	XUnmapWindow(dpy, i->window);
-      i->mapped=0;
-      deselecticon(i);
-      if((c=(i->client))) {
-	XMapWindow(dpy, c->window);
-	if(c->parent!=c->scr->root && !c->fullscreen)
-	  XMapRaised(dpy, c->parent);
-	setclientstate(c, NormalState);
-      }
+      deiconify(i);
     }
   }
 }
@@ -1239,14 +1227,7 @@ int main(int argc, char *argv[])
 	  case IconicState:
 	    if(c->parent == c->scr->root)
 	      reparent(c);
-	    if(!(c->icon))
-	      createicon(c);
-	    adjusticon(c->icon);
-	    XMapWindow(dpy, c->icon->window);
-	    if(c->icon->labelwidth)
-	      XMapWindow(dpy, c->icon->labelwin);
-	    c->icon->mapped=1;
-	    setclientstate(c, IconicState);
+            iconify(c);
 	    break;
 	  }
 	}

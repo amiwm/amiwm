@@ -153,6 +153,9 @@ void open_fscrn(Client *c)
   c->fsscr = scr = openscreen(NULL, scr->root);
   c->reparenting = 1;
   XReparentWindow(dpy, c->window, scr->back, 0, 0);
+  for (Client *dialog = clients; dialog != NULL; dialog = dialog->next)
+    if (dialog->leader == c)
+      reparent_client(c->fsscr, dialog);
   XResizeWindow(dpy, c->window, scr->width, scr->height);
   realizescreens();
   scr = c->fsscr;
@@ -177,6 +180,9 @@ void close_fscrn(Client *c, int state)
   scr = c->scr;
   if (state != IconicState)
     XMapWindow(dpy, c->parent);
+  for (Client *dialog = clients; dialog != NULL; dialog = dialog->next)
+    if (dialog->leader == c)
+      reparent_client(c->scr, dialog);
 }
 
 void setclientstate(Client *c, int state)
@@ -348,6 +354,9 @@ void rmclient(Client *c)
       XDeleteContext(dpy, c->window, client_context);
     if (c->sizehints)
       XFree(c->sizehints);
+    for (Client *dialog = clients; dialog != NULL; dialog = dialog->next)
+      if (dialog->leader == c)
+        dialog->leader = NULL;
     free(c);
 }
 
@@ -432,7 +441,8 @@ reparent_client(Scrn *s, Client *client)
     client->scr = s;
     if(client->parent != client->scr->root)
       XReparentWindow(dpy, client->parent, s->back, client->x, client->y);
-    setstringprop(client->window, amiwm_screen, s->deftitle);
+    if (s->deftitle != NULL)
+      setstringprop(client->window, amiwm_screen, s->deftitle);
     sendconfig(client);
 }
 

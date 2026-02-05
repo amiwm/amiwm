@@ -122,46 +122,54 @@ static void scanwins()
   unsigned int i, nwins;
   Client *c;
   Window dw1, dw2, *wins;
-  XWindowAttributes *pattr=NULL;
   XPointer dummy;
   Scrn *s=scr;
 
+  XGrabServer(dpy);
   XQueryTree(dpy, scr->root, &dw1, &dw2, &wins, &nwins);
-  if(nwins && (pattr=calloc(nwins, sizeof(XWindowAttributes)))) {
-    for (i = 0; i < nwins; i++)
-      XGetWindowAttributes(dpy, wins[i], pattr+i);
+  for (int scan_dialogs = 0; nwins > 0 && scan_dialogs <= 1; scan_dialogs++) {
     for (i = 0; i < nwins; i++) {
+      XWindowAttributes attr;
+      Window leader = None;
+
+      XGetTransientForHint(dpy, wins[i], &leader);
+      if (!scan_dialogs && leader != None)
+        continue; /* first pass; skip dialogs */
+      if (scan_dialogs && leader == None)
+        continue; /* second pass; skip leaders */
+      XGetWindowAttributes(dpy, wins[i], &attr);
       if (!XFindContext(dpy, wins[i], client_context, &dummy))
 	continue;
-      if (pattr[i].override_redirect) {
+      if (attr.override_redirect) {
 	if(scr->back!=scr->root && XFindContext(dpy, wins[i], screen_context, &dummy))
-	  assimilate(wins[i], pattr[i].x, pattr[i].y);
+	  assimilate(wins[i], attr.x, attr.y);
 	continue;
       }
       c = createclient(wins[i]);
-      if (c != 0 && c->window == wins[i]) {
-	if (pattr[i].map_state == IsViewable) {
+      if (c != NULL && c->window == wins[i]) {
+	if (attr.map_state == IsViewable) {
 	  c->state=NormalState;
 	  getstate(c);
 	  reparent(c);
-	  if(c->state==IconicState) {
+	  if(c->state==IconicState && c->leader == NULL) {
 	    createicon(c);
 	    adjusticon(c->icon);
 	    XMapWindow(dpy, c->icon->window);
 	    if(c->icon->labelwidth)
 	      XMapWindow(dpy, c->icon->labelwin);
 	    c->icon->mapped=1;
-	  } else if(c->state==NormalState)
+	  } else if(c->state==NormalState) {
 	    XMapRaised(dpy, c->parent);
-	  else
+	  } else {
 	    XRaiseWindow(dpy, c->parent);
+          }
 	  c->reparenting=1;
 	  scr=s;
 	}
       }
     }
-    free(pattr);
   }
+  XUngrabServer(dpy);
   XFree((void *) wins);
   cleanupicons();
 }

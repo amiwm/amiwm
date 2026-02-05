@@ -15,6 +15,7 @@ struct _Scrn;
  * @colormap: current colormap.
  */
 typedef struct _Client {
+  struct _Client *leader;
   struct _Client *next;
   struct _Scrn *scr, *fsscr;
   struct _Icon *icon;

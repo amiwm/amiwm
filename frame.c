@@ -183,9 +183,14 @@ void reparent(Client *c)
 
   getwmstate(c);
   if(XGetTransientForHint(dpy, c->window, &leader) &&
-     !XFindContext(dpy, leader, client_context, (XPointer *)&lc))
-    c->scr = lc->scr;
-  else if(XGetTextProperty(dpy, c->window, &screen_prop, amiwm_screen)) {
+     !XFindContext(dpy, leader, client_context, (XPointer *)&lc) &&
+     lc != NULL) {
+    c->leader = lc;
+    if (lc->fsscr != NULL)
+      c->scr = lc->fsscr;
+    else
+      c->scr = lc->scr;
+  } else if(XGetTextProperty(dpy, c->window, &screen_prop, amiwm_screen)) {
     do {
       if(s->root == scr->root &&
 	 (!s->deftitle[screen_prop.nitems])&&!strncmp(s->deftitle,
@@ -298,8 +303,9 @@ void reparent(Client *c)
   cb=(resizable(c->sizehints)? prefs.sizeborder:0);
   c->close=creategadget(c, c->parent, 0, 0, 19, scr->bh);
   c->drag=creategadget(c, c->parent, 19, 0, 1, 1);
-  if(c->wflags&WF_NOICONIFY)
+  if(c->wflags&WF_NOICONIFY || c->leader != NULL) {
     c->iconify=None;
+  }
   else
     c->iconify=creategadget(c, c->parent, 0, 0, 23, scr->bh);
   if(cb)
@@ -322,7 +328,8 @@ void reparent(Client *c)
 #endif
   XMapSubwindows(dpy, c->parent);
   sendconfig(c);
-  setstringprop(c->window, amiwm_screen, scr->deftitle);
+  if (scr->deftitle != NULL)
+    setstringprop(c->window, amiwm_screen, scr->deftitle);
   if(prefs.focus == FOC_CLICKTOTYPE)
     XGrabButton(dpy, Button1, AnyModifier, c->parent, True,
 		ButtonPressMask, GrabModeSync, GrabModeAsync, None, wm_curs);
@@ -747,16 +754,7 @@ void gadgetunclicked(Client *c, XEvent *e)
 /*      XWarpPointer(dpy, None, c->zoom, 0, 0, 0, 0, 23/2, scr->h5);  */
       sendconfig(c);
     } else if(w==c->iconify) {
-      if(!(c->icon))
-	createicon(c);
-      XUnmapWindow(dpy, c->parent);
-      /*      XUnmapWindow(dpy, c->window); */
-      adjusticon(c->icon);
-      XMapWindow(dpy, c->icon->window);
-      if(c->icon->labelwidth)
-	XMapWindow(dpy, c->icon->labelwin);
-      c->icon->mapped=1;
-      setclientstate(c, IconicState);
+      iconify(c);
     }
   }
   clickwindow=None;

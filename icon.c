@@ -157,6 +157,11 @@ void reparenticon(Icon *i, Scrn *s, int x, int y)
   s->icons=i;
   if(i->client) {
     reparent_client(s, i->client);
+    for (Client *dialog = clients; dialog != NULL; dialog = dialog->next) {
+      if (dialog->leader == i->client) {
+        reparent_client(s, dialog);
+      }
+    }
   }
   if(os)
     selecticon(i);
@@ -629,4 +634,47 @@ void free_icon_pms(struct IconPixmaps *pms)
   if(pms->pm2!=None) XFreePixmap(dpy, pms->pm2);
   free_color_store(dpy, &pms->cs);
   free_color_store(dpy, &pms->cs2);
+}
+
+void iconify(Client *c)
+{
+  if(!(c->icon))
+    createicon(c);
+  XUnmapWindow(dpy, c->parent);
+  adjusticon(c->icon);
+  XMapWindow(dpy, c->icon->window);
+  if(c->icon->labelwidth)
+    XMapWindow(dpy, c->icon->labelwin);
+  c->icon->mapped=1;
+  setclientstate(c, IconicState);
+  for (Client *dialog = clients; dialog != NULL; dialog = dialog->next) {
+    if (dialog->leader == c) {
+      XUnmapWindow(dpy, dialog->parent);
+      setclientstate(dialog, IconicState);
+    }
+  }
+}
+
+void deiconify(Icon *i)
+{
+  Client *c = i->client;
+
+  if(i->labelwin)
+    XUnmapWindow(dpy, i->labelwin);
+  if(i->window)
+    XUnmapWindow(dpy, i->window);
+  i->mapped=0;
+  deselecticon(i);
+  if (c != NULL) {
+    XMapWindow(dpy, c->window);
+    if(c->parent!=c->scr->root && !c->fullscreen)
+      XMapRaised(dpy, c->parent);
+    setclientstate(c, NormalState);
+    for (Client *dialog = clients; dialog != NULL; dialog = dialog->next) {
+      if (dialog->leader == c) {
+        XMapRaised(dpy, dialog->parent);
+        setclientstate(dialog, NormalState);
+      }
+    }
+  }
 }

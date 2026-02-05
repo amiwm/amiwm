@@ -39,5 +39,7 @@ extern void adjusticon(Icon *);
 extern void selecticon(Icon *);
 extern void deselecticon(Icon *);
 extern void free_icon_pms(struct IconPixmaps *pms);
+extern void iconify(Client *);
+extern void deiconify(Icon *);
 
 #endif
