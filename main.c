@@ -72,32 +72,28 @@ typedef struct _DragIcon {
 } DragIcon;
 
 Display *dpy = NULL;
+Client *activeclient=NULL, *clickclient=NULL;
+Window clickwindow=None;
+Scrn *menuactive=NULL;
+Bool shape_extn=False;
+char *x_server=NULL;
+char *free_screentitle=NULL;
+XContext client_context, screen_context, icon_context, menu_context, vroot_context;
 char *progname;
 Cursor wm_curs;
-int signalled=0, forcemoving=0;
-Client *activeclient=NULL, *dragclient=NULL, *resizeclient=NULL;
-Client *rubberclient=NULL, *clickclient=NULL, *doubleclient=NULL;
-Scrn *boundingscr=NULL; Window boundingwin=None;
-DragIcon *dragiconlist=NULL;
-int numdragicons=0;
-Window clickwindow=None;
-int rubberx, rubbery, rubberh, rubberw, rubberx0, rubbery0, olddragx, olddragy;
-Time last_icon_click=0, last_double=0;
-int initting=0;
+
+static int signalled=0, forcemoving=0;
+static Time last_icon_click=0, last_double=0;
+static Client *doubleclient=NULL;
+static int initting=0;
 static int ignore_badwindow=0;
-int dblClickTime=1500;
-XContext client_context, screen_context, icon_context, menu_context, vroot_context;
-Scrn *dragscreen=NULL, *menuactive=NULL;
-static int d_offset=0;
+static int dblClickTime=1500;
 static fd_set master_fd_set;
 static int max_fd=0;
 static Window *checkwins;
-char *free_screentitle=NULL;
-char *x_server=NULL;
-int shape_event_base, shape_error_base, shape_extn=0;
-int server_grabs=0;
-
-unsigned int meta_mask, switch_mask;
+static int shape_event_base, shape_error_base;
+static int server_grabs=0;
+static unsigned int meta_mask, switch_mask;
 
 static char **main_argv;
 
@@ -107,6 +103,7 @@ extern void reparent(Client *);
 extern void redraw(Client *, Window);
 extern void redrawclient(Client *);
 extern void redrawmenubar(Scrn *, Window);
+extern void resizeclientwindow(Client *c, int, int);
 extern void gadgetclicked(Client *c, Window w, XEvent *e);
 extern void gadgetunclicked(Client *c, XEvent *e);
 extern void gadgetaborted(Client *c);
@@ -125,7 +122,6 @@ extern void reparenticon(Icon *, Scrn *, int, int);
 extern void handle_client_message(Client *, XClientMessageEvent *);
 extern void handle_module_input(fd_set *);
 extern int dispatch_event_to_broker(XEvent *, unsigned long, struct module *);
-extern XEvent *mkcmessage(Window w, Atom a, long x);
 extern void reshape_frame(Client *c);
 extern void read_rc_file(char *filename, int manage_all);
 extern void init_modules();
@@ -186,7 +182,7 @@ static struct coevent {
     while((tv).tv_usec>=1000000) { (tv).tv_usec-=1000000; (tv).tv_sec++; } \
 }
 
-void remove_call_out(void (*what)(void *), void *with)
+static void remove_call_out(void (*what)(void *), void *with)
 {
   struct coevent *ee, **e=&eventlist;
 
@@ -204,7 +200,7 @@ void remove_call_out(void (*what)(void *), void *with)
 #define GETTIMEOFDAY(tp) gettimeofday(tp)
 #endif
 
-void call_out(int howlong_s, int howlong_u, void (*what)(void *), void *with)
+static void call_out(int howlong_s, int howlong_u, void (*what)(void *), void *with)
 {
   struct coevent *ce=malloc(sizeof(struct coevent));
   if(ce) {
@@ -261,7 +257,7 @@ void remove_fd_from_set(int fd)
   FD_CLR(fd, &master_fd_set);
 }
 
-void lookup_keysyms(Display *dpy, unsigned int *meta_mask,
+static void lookup_keysyms(Display *dpy, unsigned int *meta_mask,
     unsigned int *switch_mask)
 {
   int i,j,k,maxsym,mincode,maxcode;
@@ -297,7 +293,7 @@ void lookup_keysyms(Display *dpy, unsigned int *meta_mask,
 }
 
 
-void restorescreentitle(Scrn *s)
+static void restorescreentitle(Scrn *s)
 {
   (scr=s)->title=s->deftitle;
   XClearWindow(dpy, s->menubar);
@@ -327,13 +323,13 @@ void setfocus(Window w)
 
 static void update_clock(void *dontcare);
 
-void grab_server()
+static void grab_server()
 {
   if(!server_grabs++)
     XGrabServer(dpy);
 }
 
-void ungrab_server()
+static void ungrab_server()
 {
   if(!--server_grabs) {
     XUngrabServer(dpy);
@@ -344,389 +340,543 @@ void ungrab_server()
   }
 }
 
-void drawrubber()
+static void compress_motion(XEvent *event)
 {
-  if(rubberclient)
-    XDrawRectangle(dpy, rubberclient->scr->back, rubberclient->scr->rubbergc,
-		   rubberx, rubbery, rubberw-1, rubberh-1);
-  else if(boundingwin) {
-    const char dash_list[] = { 6 };
-    int x=rubberx, y=rubbery, w=rubberw, h=rubberh;
-    if(w<0) { x+=w; w=-w; }
-    if(h<0) { y+=h; h=-h; }
-    if(w>=HYSTERESIS || h>=HYSTERESIS) {
-      XSetDashes(dpy, boundingscr->rubbergc, d_offset,
-		 dash_list, sizeof(dash_list));
-      XSetLineAttributes(dpy, boundingscr->rubbergc, 0, LineOnOffDash,
-			 CapButt, JoinMiter);
-      XDrawRectangle(dpy, boundingwin, boundingscr->rubbergc, x, y, w, h);
-      XSetLineAttributes(dpy, boundingscr->rubbergc, 0, LineSolid,
-			 CapButt, JoinMiter);
+  if (event->type != MotionNotify)
+    return;
+  while (XCheckTypedWindowEvent(dpy, event->xmotion.window, MotionNotify, event))
+    ;
+}
+
+static Bool grab_for_motion(Window w, Window confine, Cursor curs, Time time, int x_root, int y_root)
+{
+  /*
+   * To avoid misclicks, only grab for move/resize/etc, if the user has
+   * moved the pointer by a given threshold.
+   */
+  static const int THRESHOLD = 5;
+  int status;
+
+  XSync(dpy, False);
+  status = XGrabPointer(dpy, w, False,
+                        ButtonPressMask|ButtonReleaseMask|Button1MotionMask,
+                        GrabModeAsync, GrabModeAsync, confine, None, time);
+  if (status == AlreadyGrabbed || status == GrabSuccess) {
+    for (;;) {
+      XEvent event;
+      int dx, dy;
+
+      XMaskEvent(dpy, ButtonPressMask|ButtonReleaseMask|Button1MotionMask, &event);
+      XPutBackEvent(dpy, &event);
+      if (event.type != MotionNotify)
+        break;
+      compress_motion(&event);
+      dx = x_root - event.xmotion.x_root;
+      dy = y_root - event.xmotion.y_root;
+      if (dx*dx + dy*dy > THRESHOLD*THRESHOLD) /* Pythagoras! */
+        return True;
     }
   }
+  XUngrabPointer(dpy, CurrentTime);
+  return False;
 }
 
-static void move_dashes(void *dontcare)
+static void get_drag_event(XEvent *event)
 {
-  call_out(0, 50000, move_dashes, dontcare);
-  drawrubber();
-  if((--d_offset)<0)
-    d_offset=11;
-  drawrubber();
-}
+  static const unsigned int DRAG_MASK = ButtonPressMask|ButtonReleaseMask|Button1MotionMask;
 
-void endrubber()
-{
-  if(rubberclient) {
-    if((!prefs.opaquemove||dragclient==NULL) && 
-       (!prefs.opaqueresize||resizeclient==NULL))
-      drawrubber();
-    rubberclient=NULL;
-  } else if(boundingwin) {
-    if((!prefs.opaquemove||dragclient==NULL) && 
-       (!prefs.opaqueresize||resizeclient==NULL))
-      drawrubber();
-    boundingwin=None;
-  }
-}
+  for (;;) {
+    fd_set rfds = master_fd_set;
+    struct timeval t = {
+      .tv_sec = 0,
+      .tv_usec = 0,
+    };
 
-void initrubber(int x0, int y0, Client *c)
-{
-  endrubber();
-  rubberx=c->x;
-  rubbery=c->y;
-  rubberw=c->pwidth;
-  rubberh=c->pheight;
-  rubberx0=x0;
-  rubbery0=y0;
-  rubberclient=c;
-}
+    while (XCheckMaskEvent(dpy, ExposureMask|DRAG_MASK, event)) {
+      Client *c = NULL;
+      Icon *i = NULL;
+      Scrn *s = NULL;
 
-void abortrubber()
-{
-  if(rubberclient) {
-    endrubber();
-    dragclient=resizeclient=NULL;
-    ungrab_server();
-    XUngrabPointer(dpy, CurrentTime);
-  } else if(boundingwin) {
-    endrubber();
-    boundingwin=None;
-    boundingscr=NULL;
-    ungrab_server();
-    XUngrabPointer(dpy, CurrentTime);
-  }
-}
-
-void startbounding(Scrn *s, Window w, XEvent *e)
-{
-  last_icon_click=e->xbutton.time;
-  boundingscr=s;
-  boundingwin=w;
-  XGrabPointer(dpy, w, False, Button1MotionMask|ButtonPressMask|
-	       ButtonReleaseMask, GrabModeAsync, GrabModeAsync, s->back, None,
-	       CurrentTime);
-  grab_server();
-  rubberx=e->xbutton.x;
-  rubbery=e->xbutton.y;
-  rubberx0=e->xbutton.x_root;
-  rubbery0=e->xbutton.y_root;
-  rubberw=0;
-  rubberh=0;
-  drawrubber();
-  call_out(0, 0, move_dashes, NULL);
-}
-
-void endbounding(XEvent *e)
-{
-  Icon *i;
-  int bx, by;
-  Window cc;
-
-  if(boundingscr) {
-    remove_call_out(move_dashes, NULL);
-    endrubber();
-    if(!(e->xbutton.state & ShiftMask))
-      deselect_all_icons(boundingscr);
-
-    if(rubberw<0) {
-      rubberx+=rubberw;
-      rubberw=-rubberw;
+      if (event->type == MotionNotify)
+        compress_motion(event);
+      if (event->type != Expose)
+        return;
+      if (event->xexpose.count)
+        continue;
+      else if (!XFindContext(dpy, event->xexpose.window, client_context, (XPointer*)&c))
+        redraw(c, event->xexpose.window);
+      else if (!XFindContext(dpy, event->xexpose.window, icon_context, (XPointer*)&i))
+        redrawicon(i, event->xexpose.window);
+      else if (!XFindContext(dpy, event->xexpose.window, screen_context, (XPointer*)&s))
+        redrawmenubar(s, event->xexpose.window);
+      continue;
     }
-    if(rubberh<0) {
-      rubbery+=rubberh;
-      rubberh=-rubberh;
+
+    if (select(max_fd, &rfds, NULL, NULL, &t) > 0) {
+      handle_module_input(&rfds);
+      if(FD_ISSET(ConnectionNumber(dpy), &rfds))
+        XFlush(dpy);
+      continue;
     }
-    if(rubberw>=HYSTERESIS || rubberh>=HYSTERESIS)
-      for(i=boundingscr->icons; i; i=i->next)
-	if(i->window && i->mapped &&
-	   XTranslateCoordinates(dpy, i->parent, scr->back, i->x, i->y,
-				 &bx, &by, &cc) &&
-	   bx<rubberx+rubberw && by<rubbery+rubberh &&
-	   bx+i->width>rubberx && by+i->height>rubbery)
-	  selecticon(i);
-    boundingscr=NULL;
-    ungrab_server();
-    XUngrabPointer(dpy, CurrentTime);
-  }
-}
-
-void startdragging(Client *c, XEvent *e)
-{
-  scr=c->scr;
-  dragclient=c;
-  XGrabPointer(dpy, c->drag, False, Button1MotionMask|ButtonPressMask|
-	       ButtonReleaseMask, GrabModeAsync, GrabModeAsync, scr->back,
-	       None, CurrentTime);
-  if(!prefs.opaquemove)
-    grab_server();
-  initrubber(e->xbutton.x_root, e->xbutton.y_root, c);
-  rubberx0-=rubberx;
-  rubbery0-=rubbery;
-  if(!forcemoving) {
-    if(rubberx+rubberw>scr->width)
-      rubberx=scr->width-rubberw;
-    if(rubbery+rubberh>scr->height)
-      rubbery=scr->height-rubberh;
-    if(rubberx<0)
-      rubberx=0;
-    if(rubbery<0)
-      rubbery=0;
-  }
-  if(!prefs.opaquemove)
-    drawrubber();
-}
-
-void startscreendragging(Scrn *s, XEvent *e)
-{
-  dragscreen=s;
-  XGrabPointer(dpy, s->menubar, False, Button1MotionMask|ButtonPressMask|
-	       ButtonReleaseMask, GrabModeAsync, GrabModeAsync, s->root, None,
-	       CurrentTime);
-  olddragy=rubbery=s->y;
-  rubbery0=e->xbutton.y_root-rubbery;
-}
-
-void endscreendragging()
-{
-  Scrn *s;
-  if((s=dragscreen)) {
-#ifndef ASSIMILATE_WINDOWS
-    scrsendconfig(dragscreen);
-#endif
-    dragscreen=NULL;
-    XUngrabPointer(dpy, CurrentTime);
-  }
-}
-
-void abortscreendragging()
-{
-  if(dragscreen) {
-    XMoveWindow(dpy, dragscreen->back, -dragscreen->bw,
-		(dragscreen->y=olddragy)-dragscreen->bw);
-    endscreendragging();
-  }
-}
-
-void aborticondragging()
-{
-  if(numdragicons) {
-    int i;
-    for(i=0; i<numdragicons; i++) {
-      XDestroyWindow(dpy, dragiconlist[i].w);
-      if(dragiconlist[i].pm)
-	XFreePixmap(dpy, dragiconlist[i].pm);
-    }
-    numdragicons=0;
-    free(dragiconlist);
-    dragiconlist=NULL;
-    XUngrabPointer(dpy, CurrentTime);
-  }
-}
-
-void badicondrop()
-{
-  wberror(dragiconlist[0].icon->scr,
-	  "Icon can't be moved into this window");
-  aborticondragging();
-}
-
-void endicondragging(XEvent *e)
-{
-  int i;
-  Client *c;
-  int wx, wy;
-  Window ch;
-
-  scr=get_front_scr();
-  for(;;) {
-    if(scr->root == e->xbutton.root && e->xbutton.y_root>=scr->y)
-      break;
-    if((scr=scr->behind)==get_front_scr()) {
-      badicondrop();
-      return;
-    }
-  }
-
-  if (!scr->deftitle) {
-      badicondrop();
-      return;
-  }
-
-  if(XTranslateCoordinates(dpy, scr->root, scr->back,
-			   e->xbutton.x_root, e->xbutton.y_root,
-			   &wx, &wy, &ch) && ch!=None) {
-    if(XFindContext(dpy, ch, client_context, (XPointer*)&c) ||
-       c->scr != scr || c->state != NormalState)
-      c = NULL;
-  } else
-    c = NULL;
-
-  if(c) {
-    if(c->module) {
-      extern Atom amiwm_appwindowmsg;
-      XTranslateCoordinates(dpy, scr->back, c->window, -4, -4, &wx, &wy, &ch);
-      for(i=0; i<numdragicons; i++) {
-	XEvent *e=mkcmessage(c->window, amiwm_appwindowmsg,
-			     dragiconlist[i].icon->window);
-	e->xclient.data.l[2] = dragiconlist[i].x+wx;
-	e->xclient.data.l[3] = dragiconlist[i].y+wy;
-	dispatch_event_to_broker(e, 0, c->module);
+    XFlush(dpy);
+    rfds = master_fd_set;
+    if(eventlist)
+      fill_in_call_out(&t);
+    if(select(max_fd, &rfds, NULL, NULL, (eventlist? &t:NULL))<0) {
+      if (errno != EINTR) {
+        perror("select");
+        break;
       }
-      aborticondragging();
-    } else
-      badicondrop();
-    return;
+    } else {
+      call_call_out();
+      handle_module_input(&rfds);
+      if(FD_ISSET(ConnectionNumber(dpy), &rfds))
+        XFlush(dpy);
+    }
   }
-
-  for(i=0; i<numdragicons; i++)
-    dragiconlist[i].icon->mapped=0;
-  for(i=0; i<numdragicons; i++) {
-    if(dragiconlist[i].icon->scr!=scr)
-      reparenticon(dragiconlist[i].icon, scr,
-		   dragiconlist[i].x-4, dragiconlist[i].y-4-scr->y);
-    else
-      XMoveWindow(dpy, dragiconlist[i].icon->window,
-		  dragiconlist[i].icon->x = dragiconlist[i].x-4,
-		  dragiconlist[i].icon->y = dragiconlist[i].y-4-scr->y);
-    dragiconlist[i].icon->mapped=1;
-    adjusticon(dragiconlist[i].icon);
-  }
-  aborticondragging();
 }
 
-void starticondragging(Scrn *scr, XEvent *e)
+struct bounding {
+  Scrn *scr;
+  int x, y, w, h;
+  int d_offset;
+};
+
+static void draw_bounding(struct bounding *bounding)
 {
-  XWindowAttributes xwa;
-  XSetWindowAttributes xswa;
-  Icon *i;
-  Window ww;
+  int x = bounding->x;
+  int y = bounding->y;
+  int w = bounding->w;
+  int h = bounding->h;
 
-  aborticondragging();
-  for(i=scr->firstselected; i; i=i->nextselected)
-    numdragicons++;
-  if(!numdragicons)
+  if (w < 0) {
+    x += w;
+    w *= -1;
+  }
+  if (h < 0) {
+    y += h;
+    h *= -1;
+  }
+  if (w >= HYSTERESIS || h >=HYSTERESIS) {
+    XSetDashes(dpy, bounding->scr->rubbergc, bounding->d_offset,
+               (char[]){6}, 1);
+    XSetLineAttributes(dpy, bounding->scr->rubbergc, 0, LineOnOffDash,
+                       CapButt, JoinMiter);
+    XDrawRectangle(dpy, bounding->scr->back, bounding->scr->rubbergc,
+                   x, y, w, h);
+    XSetLineAttributes(dpy, bounding->scr->rubbergc, 0, LineSolid,
+                       CapButt, JoinMiter);
+  }
+}
+
+static void move_dashes(void *ctx)
+{
+  struct bounding *bounding = ctx;
+
+  call_out(0, 50000, move_dashes, bounding);
+  draw_bounding(bounding);
+  if (--bounding->d_offset < 0)
+    bounding->d_offset = 11;
+  draw_bounding(bounding);
+}
+
+static void drag_bounding(Scrn *s, Time time, int x_root, int y_root, int x, int y)
+{
+  struct bounding bounding = {
+    .scr = s,
+    .x = x,
+    .y = y,
+    .w = 0,
+    .h = 0,
+    .d_offset = 0,
+  };
+
+  if (!grab_for_motion(s->back, None, None, time, x_root, y_root))
     return;
+  grab_server();
+  call_out(0, 0, move_dashes, &bounding);
+  for (;;) {
+    XEvent event;
+    get_drag_event(&event);
+    draw_bounding(&bounding);
+    if (event.type == ButtonRelease && event.xbutton.button == Button1) {
+      remove_call_out(move_dashes, &bounding);
+      if (!(event.xbutton.state & ShiftMask))
+        deselect_all_icons(s);
+      if (bounding.w < 0) {
+        bounding.x += bounding.w;
+        bounding.w *= -1;
+      }
+      if (bounding.w < 0) {
+        bounding.y += bounding.h;
+        bounding.h *= -1;
+      }
+      if (bounding.w >= HYSTERESIS || bounding.h >= HYSTERESIS) {
+        for(Icon *i = s->icons; i != NULL; i = i->next) {
+          int bx, by;
+          if(i->window && i->mapped &&
+             XTranslateCoordinates(dpy, i->parent, s->back, i->x, i->y,
+                                   &bx, &by, &(Window){0}) &&
+             bx < bounding.x + bounding.w && bx + i->width>bounding.x &&
+             by < bounding.y + bounding.h && by + i->height>bounding.y) {
+            selecticon(i);
+          }
+        }
+      }
+      break;
+    }
+    if (event.type == ButtonPress && event.xbutton.button == Button3)
+      break;
+    if (event.type != MotionNotify)
+      continue;
+    bounding.w = event.xmotion.x_root - x_root;
+    bounding.h = event.xmotion.y_root - y_root;
+    draw_bounding(&bounding);
+  }
 
-  if(!(dragiconlist=calloc(numdragicons, sizeof(DragIcon)))) {
-    numdragicons=0;
+  ungrab_server();
+  XUngrabPointer(dpy, CurrentTime);
+}
+
+static void drag_move(Client *c, Time time, int x_root, int y_root)
+{
+  int x = c->x;
+  int y = c->y;
+  int dx = x_root - c->x;
+  int dy = y_root - c->y;
+
+  if (!grab_for_motion(c->drag, c->scr->back, None, time, x_root, y_root))
+    return;
+  grab_server();
+  if(!prefs.opaquemove) {
+    XDrawRectangle(dpy, c->scr->back, c->scr->rubbergc,
+                   x, y, c->pwidth-1, c->pheight-1);
+  }
+  for (;;) {
+    XEvent event;
+    get_drag_event(&event);
+    if(!prefs.opaquemove) {
+      XDrawRectangle(dpy, c->scr->back, c->scr->rubbergc,
+                     x, y, c->pwidth-1, c->pheight-1);
+    }
+    if (event.type == ButtonRelease && event.xbutton.button == Button1) {
+      XMoveWindow(dpy, c->parent, c->x = x, c->y = y);
+      break;
+    }
+    if (event.type == ButtonPress && event.xbutton.button == Button3)
+      break;
+    if (event.type != MotionNotify)
+      continue;
+
+    x = event.xmotion.x_root - dx;
+    y = event.xmotion.y_root - dy;
+    if(!forcemoving) {
+      if (prefs.forcemove==FM_AUTO &&
+         (x + c->pwidth  - c->scr->width  > (c->pwidth>>2) ||
+          y + c->pheight - c->scr->height > (c->pheight>>2) ||
+          -x > (c->pwidth>>2) || -y > (c->pheight>>2)))
+        forcemoving=1;
+      else {
+        if (x + c->pwidth  > c->scr->width)
+          x = c->scr->width-c->pwidth;
+        if (y + c->pheight > c->scr->height)
+          y = c->scr->height-c->pheight;
+        if (x < 0)
+          x = 0;
+        if (y < 0)
+          y = 0;
+      }
+    }
+    if(prefs.opaquemove) {
+      if (y <= -c->scr->bh)
+        y = 1 - c->scr->bh;
+      XMoveWindow(dpy, c->parent, c->x = x, c->y = y);
+    } else {
+      XDrawRectangle(dpy, c->scr->back, c->scr->rubbergc,
+                     x, y, c->pwidth-1, c->pheight-1);
+    }
+  }
+  sendconfig(c);
+  ungrab_server();
+  XUngrabPointer(dpy, CurrentTime);
+}
+
+static void drag_screen(Scrn *s, Time time, int x_root, int y_root)
+{
+  int y = s->y;
+  int dy = y_root - s->y;
+
+  if (!grab_for_motion(s->menubar, None, None, time, x_root, y_root))
+    return;
+  for (;;) {
+    XEvent event;
+    get_drag_event(&event);
+    if (event.type == ButtonRelease && event.xbutton.button == Button1) {
+      s->y = y;
+      break;
+    }
+    if (event.type == ButtonPress && event.xbutton.button == Button3)
+      break;
+    if (event.type != MotionNotify)
+      continue;
+
+    y = event.xmotion.y_root - dy;
+#warning TODO: when add multihead, drag screen relative to monitor geometry
+    if (y < 0)
+      y = 0;
+    if (y >= s->height)
+      y = s->height - 1;
+    XMoveWindow(dpy, s->back, -s->bw, y - s->bw);
+  }
+  XMoveWindow(dpy, s->back, -s->bw, s->y - s->bw);
+  XUngrabPointer(dpy, CurrentTime);
+#ifndef ASSIMILATE_WINDOWS
+  scrsendconfig(s);
+#endif
+}
+
+static void drag_icon(Scrn *s, Time time, int x_root, int y_root)
+{
+  int nicons = 0;
+  DragIcon *dragging = NULL;
+  Icon *i;
+
+  for (i = s->firstselected; i != NULL; i = i->nextselected)
+    nicons++;
+  if (nicons < 1)
+    return;
+  dragging = calloc(nicons, sizeof(*dragging));
+  if (dragging == NULL) {
+    /* is XBell(3) the best way to signal error? */
     XBell(dpy, 100);
     return;
   }
+  if (!grab_for_motion(s->back, None, None, time, x_root, y_root)) {
+    free(dragging);
+    return;
+  }
+  for (nicons = 0, i = s->firstselected; i != NULL; i = i->nextselected, nicons++) {
+    XWindowAttributes xwa;
+    XSetWindowAttributes xswa;
 
-  for(numdragicons=0, i=scr->firstselected; i; i=i->nextselected) {
-    dragiconlist[numdragicons].icon = i;
+    dragging[nicons].icon = i;
     XGetWindowAttributes(dpy, i->window, &xwa);
-    if(i->parent!=scr->back)
-      XTranslateCoordinates(dpy, i->parent, scr->back, xwa.x, xwa.y,
-			    &xwa.x, &xwa.y, &ww);
-    dragiconlist[numdragicons].x = xwa.x+4;
-    dragiconlist[numdragicons].y = xwa.y+4+scr->y;
-    xswa.save_under=True;
-    xswa.override_redirect=True;
-    if(i->innerwin) {
+    XTranslateCoordinates(dpy, i->window, s->root, 0, 0,
+                          &dragging[nicons].x, &dragging[nicons].y,
+                          &(Window){0});
+    dragging[nicons].x += 4;
+    dragging[nicons].y += 4;
+    xswa.save_under = True;
+    xswa.override_redirect = True;
+    if (i->innerwin != None) {
       XGetWindowAttributes(dpy, i->innerwin, &xwa);
-      xswa.background_pixmap = dragiconlist[numdragicons].pm =
-	XCreatePixmap(dpy, i->innerwin, xwa.width, xwa.height, xwa.depth);
-      XCopyArea(dpy, i->innerwin, dragiconlist[numdragicons].pm, scr->gc,
-		0, 0, xwa.width, xwa.height, 0, 0);
+      xswa.background_pixmap = dragging[nicons].pm = XCreatePixmap(
+        dpy, i->innerwin, xwa.width, xwa.height, xwa.depth
+      );
+      XCopyArea(dpy, i->innerwin, dragging[nicons].pm, s->gc,
+                0, 0, xwa.width, xwa.height, 0, 0);
     } else {
-      if(i->secondpm) {
-	xswa.background_pixmap = i->secondpm;
-	XGetGeometry(dpy, i->secondpm, &xwa.root, &xwa.x, &xwa.y,
-		     (unsigned int *)&xwa.width, (unsigned int *)&xwa.height,
-		     (unsigned int *)&xwa.border_width,
-		     (unsigned int *)&xwa.depth);
-      } else if(i->iconpm) {
-	xswa.background_pixmap = i->iconpm;
-	XGetGeometry(dpy, i->iconpm, &xwa.root, &xwa.x, &xwa.y,
-		     (unsigned int *)&xwa.width, (unsigned int *)&xwa.height,
-		     (unsigned int *)&xwa.border_width,
-		     (unsigned int *)&xwa.depth);
+      if (i->secondpm) {
+        xswa.background_pixmap = i->secondpm;
+        XGetGeometry(dpy, i->secondpm, &xwa.root, &(int){0}, &(int){0},
+                     (unsigned int *)&xwa.width, (unsigned int *)&xwa.height,
+                     &(unsigned int){0}, (unsigned int *)&xwa.depth);
+      } else if (i->iconpm) {
+        xswa.background_pixmap = i->iconpm;
+        XGetGeometry(dpy, i->iconpm, &xwa.root, &(int){0}, &(int){0},
+                     (unsigned int *)&xwa.width, (unsigned int *)&xwa.height,
+                     &(unsigned int){0}, (unsigned int *)&xwa.depth);
       }
-      if(xwa.depth!=scr->depth) {
-	dragiconlist[numdragicons].pm =
-	  XCreatePixmap(dpy, i->window, xwa.width, xwa.height, scr->depth);
-	XSetForeground(dpy, scr->gc, scr->dri.dri_Pens[SHADOWPEN]);
-	XSetBackground(dpy, scr->gc, scr->dri.dri_Pens[BACKGROUNDPEN]);
-	XCopyPlane(dpy, xswa.background_pixmap, dragiconlist[numdragicons].pm,
-		   scr->gc, 0, 0, xwa.width, xwa.height, 0, 0, 1);
-	xswa.background_pixmap = dragiconlist[numdragicons].pm;
-	xwa.depth = scr->depth;
+      if (xwa.depth != s->depth) {
+        dragging[nicons].pm = XCreatePixmap(dpy, i->window, xwa.width,
+                                            xwa.height, xwa.depth);
+        XSetForeground(dpy, s->gc, s->dri.dri_Pens[SHADOWPEN]);
+        XSetBackground(dpy, s->gc, s->dri.dri_Pens[BACKGROUNDPEN]);
+        XCopyPlane(dpy, xswa.background_pixmap, dragging[nicons].pm,
+                   s->gc, 0, 0, xwa.width, xwa.height, 0, 0, 1);
+        xswa.background_pixmap = dragging[nicons].pm;
+        xwa.depth = s->depth;
       }
     }
-    xswa.colormap=xwa.colormap;
-    dragiconlist[numdragicons].w =
-      XCreateWindow(dpy, scr->root,
-		    dragiconlist[numdragicons].x,
-		    dragiconlist[numdragicons].y,
-		    xwa.width, xwa.height, 0,
-		    xwa.depth, xwa.class, xwa.visual,
-		    CWBackPixmap|CWOverrideRedirect|CWSaveUnder|CWColormap,
-		    &xswa);
+    xswa.colormap = xwa.colormap;
+    dragging[nicons].w = XCreateWindow(
+      dpy, s->root, dragging[nicons].x, dragging[nicons].y,
+      xwa.width, xwa.height, 0, xwa.depth, xwa.class, xwa.visual,
+      CWBackPixmap|CWOverrideRedirect|CWSaveUnder|CWColormap, &xswa
+    );
 #ifdef HAVE_XSHAPE
-    if(shape_extn) {
-      if(i->innerwin) {
-	int bShaped, xbs, ybs, cShaped, xcs, ycs;
-	unsigned int wbs, hbs, wcs, hcs;
-	XShapeQueryExtents(dpy, i->innerwin, &bShaped, &xbs, &ybs, &wbs, &hbs,
-			   &cShaped, &xcs, &ycs, &wcs, &hcs);
-	if(bShaped)
-	  XShapeCombineShape(dpy, dragiconlist[numdragicons].w, ShapeBounding,
-			     0, 0, i->innerwin, ShapeBounding, ShapeSet);
-      } else if(i->maskpm) {
-	XShapeCombineMask(dpy, dragiconlist[numdragicons].w, ShapeBounding,
-			  0, 0, i->maskpm, ShapeSet);
+    if (shape_extn) {
+      if (i->innerwin != None) {
+        int b_shaped;
+        XShapeQueryExtents(
+          dpy, i->innerwin,
+          &b_shaped, &(int){0}, &(int){0}, &(unsigned){0}, &(unsigned){0},
+          &(int){0}, &(int){0}, &(int){0}, &(unsigned){0}, &(unsigned){0}
+        );
+        if (b_shaped) XShapeCombineShape(
+          dpy, dragging[nicons].w, ShapeBounding, 0, 0, i->innerwin,
+          ShapeBounding, ShapeSet
+        );
+      } else if (i->maskpm != None) {
+        XShapeCombineMask(
+          dpy, dragging[nicons].w, ShapeBounding, 0, 0, i->maskpm, ShapeSet
+        );
       }
     }
 #endif
-    XMapRaised(dpy, dragiconlist[numdragicons].w);
-    numdragicons++;
+    XMapRaised(dpy, dragging[nicons].w);
   }
-  XGrabPointer(dpy, scr->back, False, Button1MotionMask|ButtonPressMask|
-	       ButtonReleaseMask, GrabModeAsync, GrabModeAsync, scr->root,
-	       None, CurrentTime);
-  olddragx = rubberx0 = e->xbutton.x_root;
-  olddragy = rubbery0 = e->xbutton.y_root;
+
+  for (;;) {
+    XEvent event;
+    get_drag_event(&event);
+    if (event.type == ButtonRelease && event.xbutton.button == Button1) {
+      Scrn *s = get_front_scr();
+      int wx, wy;
+      Window ch;
+      Client *c;
+
+      for (;;) {
+        if (s->root == event.xbutton.root && event.xbutton.y_root >= s->y)
+          break;
+        s = s->behind;
+        if (s == get_front_scr()) {
+          goto error;
+        }
+      }
+      if (s->deftitle == NULL)
+        goto error;
+      if (XTranslateCoordinates(dpy, s->root, s->back, x_root, y_root,
+                                &wx, &wy, &ch) && ch != None) {
+        if (XFindContext(dpy, ch, client_context, (void *)&c) ||
+            c->scr != s || c->state != NormalState) {
+          c = NULL;
+        }
+      } else {
+        c = NULL;
+      }
+
+      if (c != NULL) {
+        if (c->module != NULL) {
+          extern Atom amiwm_appwindowmsg;
+          XTranslateCoordinates(dpy, s->back, c->window, -4, -4, &wx, &wy, &ch);
+          for (int n = 0; n < nicons; n++) {
+            dispatch_event_to_broker(mkcmessage(
+              c->window, amiwm_appwindowmsg,dragging[n].icon->window,
+              dragging[n].x + wx, dragging[n].y + wy
+            ), 0, c->module);
+          }
+          goto done;
+        } else {
+          goto error;
+        }
+      }
+
+      for (int n = 0; n < nicons; n++) {
+        if (dragging[n].icon->scr != s) {
+          dragging[n].icon->mapped = False; /* reparenticon() needs it false */
+          reparenticon(dragging[n].icon, s,
+                       dragging[n].x - 4, dragging[n].y - 4 - s->y);
+        } else {
+          XMoveWindow(dpy, dragging[n].icon->window,
+                      dragging[n].icon->x = dragging[n].x - 4,
+                      dragging[n].icon->y = dragging[n].y - 4 - s->y);
+        }
+        dragging[n].icon->mapped = True;
+        adjusticon(dragging[n].icon);
+      }
+
+      goto done;
+    }
+    if (event.type == ButtonPress && event.xbutton.button == Button3)
+      break;
+    if (event.type != MotionNotify)
+      continue;
+
+    for (int n = 0; n < nicons; n++) {
+      int dx = x_root - dragging[n].x;
+      int dy = y_root - dragging[n].y;
+      XMoveWindow(dpy, dragging[n].w,
+                  dragging[n].x = event.xmotion.x_root - dx,
+                  dragging[n].y = event.xmotion.y_root - dy);
+    }
+    x_root = event.xmotion.x_root;
+    y_root = event.xmotion.y_root;
+  }
+error:
+  wberror(dragging[0].icon->scr,
+          "Icon can't be moved into this window");
+
+done:
+  for (int n = 0; n < nicons; n++) {
+    XDestroyWindow(dpy, dragging[n].w);
+    if(dragging[n].pm)
+      XFreePixmap(dpy, dragging[n].pm);
+  }
+  free(dragging);
+  XUngrabPointer(dpy, CurrentTime);
 }
 
-void enddragging()
+static void drag_resize(Client *c, Time time, int x_root, int y_root)
 {
-  if(dragclient) {
-    Client *c=dragclient;
-    endrubber();
-    if(rubbery<=-(c->scr->bh))
-      rubbery=1-(c->scr->bh);
-    XMoveWindow(dpy, c->parent, c->x=rubberx, c->y=rubbery);
-    dragclient=NULL;
-    if(!prefs.opaquemove)
-      ungrab_server();
-    XUngrabPointer(dpy, CurrentTime);
-    sendconfig(c);
+  int w = c->pwidth;
+  int h = c->pheight;
+  int dx = w - (x_root - c->x);
+  int dy = h - (y_root - c->y);
+
+  if (!grab_for_motion(c->drag, c->scr->back, None, time, x_root, y_root))
+    return;
+  grab_server();
+  if(!prefs.opaqueresize)
+    XDrawRectangle(dpy, c->scr->back, c->scr->rubbergc, c->x, c->y, w-1, h-1);
+  for (;;) {
+    XEvent event;
+    get_drag_event(&event);
+    if(!prefs.opaqueresize)
+      XDrawRectangle(dpy, c->scr->back, c->scr->rubbergc, c->x, c->y, w-1, h-1);
+    if (event.type == ButtonRelease && event.xbutton.button == Button1) {
+      resizeclientwindow(c, w, h);
+      break;
+    }
+    if (event.type == ButtonPress && event.xbutton.button == Button3)
+      break;
+    if (event.type != MotionNotify)
+      continue;
+
+    w = event.xmotion.x_root - c->x + dx;
+    h = event.xmotion.y_root - c->y + dy;
+    if (c->sizehints->width_inc) {
+      w -= c->sizehints->base_width + c->framewidth;
+      w -= w % c->sizehints->width_inc;
+      w += c->sizehints->base_width;
+      if (w > c->sizehints->max_width)
+        w = c->sizehints->max_width;
+      if (w < c->sizehints->min_width)
+        w = c->sizehints->min_width;
+      w += c->framewidth;
+    }
+    if (c->sizehints->height_inc) {
+      h -= c->sizehints->base_height + c->frameheight;
+      h -= h % c->sizehints->height_inc;
+      h += c->sizehints->base_height;
+      if (h > c->sizehints->max_height)
+        h = c->sizehints->max_height;
+      if (h < c->sizehints->min_height)
+        h = c->sizehints->min_height;
+      h += c->frameheight;
+    }
+    if(prefs.opaqueresize) {
+      resizeclientwindow(c, w, h);
+    } else {
+      XDrawRectangle(dpy, c->scr->back, c->scr->rubbergc, c->x, c->y, w-1, h-1);
+    }
   }
+  sendconfig(c);
+  ungrab_server();
+  XUngrabPointer(dpy, CurrentTime);
 }
 
-void do_icon_double_click(Scrn *scr)
+static void do_icon_double_click(Scrn *scr)
 {
   extern Atom amiwm_appiconmsg;
   Icon *i, *next;
@@ -742,36 +892,7 @@ void do_icon_double_click(Scrn *scr)
   }
 }
 
-void startresizing(Client *c, XEvent *e)
-{
-  resizeclient=c;
-  XGrabPointer(dpy, c->resize, False, Button1MotionMask|ButtonPressMask|
-	       ButtonReleaseMask, GrabModeAsync, GrabModeAsync,
-	       c->scr->back, None, CurrentTime);
-  if(!prefs.opaqueresize)
-    grab_server(); 
-  initrubber(e->xbutton.x_root, e->xbutton.y_root, c);
-  rubberx0-=rubberw;
-  rubbery0-=rubberh;
-  if(!prefs.opaqueresize)
-    drawrubber();
-}
-
-void endresizing()
-{
-  extern void resizeclientwindow(Client *c, int, int);
-  if(resizeclient) {
-    Client *c=resizeclient;
-    endrubber();
-    if(!prefs.opaqueresize)
-      ungrab_server();
-    resizeclientwindow(c, rubberw, rubberh);
-    resizeclient=NULL;
-    XUngrabPointer(dpy, CurrentTime);
-  }
-}
-
-void abortfocus()
+static void abortfocus()
 {
   if(activeclient) {
     activeclient->active=False;
@@ -785,7 +906,7 @@ void abortfocus()
   setfocus(None);
 }
 
-RETSIGTYPE sighandler(int sig)
+static RETSIGTYPE sighandler(int sig)
 {
   signalled=1;
   signal(sig, SIG_IGN);
@@ -844,7 +965,7 @@ static void update_clock(void *dontcare)
   } while(scr != get_front_scr());
 }
 
-void cleanup()
+static void cleanup()
 {
   int sc;
   extern void free_prefs();
@@ -995,8 +1116,7 @@ int main(int argc, char *argv[])
 
     while((!signalled) && QLength(dpy)>0) {
       Client *c; Icon *i;
-      int motionx, motiony;
-      
+
       XNextEvent(dpy, &event);
       if(!XFindContext(dpy, event.xany.window, client_context,
 		       (XPointer*)&c)) {
@@ -1014,16 +1134,12 @@ int main(int argc, char *argv[])
       switch(event.type) {
       case Expose:
 	if(!event.xexpose.count) {
-	  if((rubberclient || boundingscr)&&!prefs.opaquemove
-             &&!prefs.opaqueresize) 
-            drawrubber();
 	  if(c)
 	    redraw(c, event.xexpose.window);
 	  else if(i)
 	    redrawicon(i, event.xexpose.window);
 	  else if(scr)
 	    redrawmenubar(scr, event.xexpose.window);
-	  if((rubberclient || boundingscr)&&!prefs.opaquemove) drawrubber();
 	}
 	break;
       case CreateNotify:
@@ -1297,9 +1413,7 @@ int main(int argc, char *argv[])
 	}
 	break;
       case ButtonPress:
-	if(!rubberclient && !boundingscr && clickwindow==None &&
-	   !dragiconlist && event.xbutton.button==Button1 &&
-	   !dragscreen && !menuactive)
+	if(clickwindow==None && event.xbutton.button==Button1 && !menuactive) {
 	  if(c) {
 	    if((!c->active) && prefs.focus==FOC_CLICKTOTYPE &&
 	       (c->state==NormalState)) {
@@ -1331,9 +1445,9 @@ int main(int argc, char *argv[])
 	    if(event.xbutton.window==c->drag) {
 	      forcemoving=(prefs.forcemove==FM_ALWAYS) ||
 		(event.xbutton.state & ShiftMask);
-	      startdragging(c, &event);
+	      drag_move(c, event.xbutton.time, event.xbutton.x_root, event.xbutton.y_root);
 	    } else if(event.xbutton.window==c->resize)
-	      startresizing(c, &event);
+	      drag_resize(c, event.xbutton.time, event.xbutton.x_root, event.xbutton.y_root);
 	    else if(event.xbutton.window==c->window ||
 		    event.xbutton.window==c->parent)
 	      ;
@@ -1348,7 +1462,7 @@ int main(int argc, char *argv[])
 		deselect_all_icons(i->scr);
 	      last_icon_click=event.xbutton.time;
 	      selecticon(i);
-	      starticondragging(i->scr, &event);
+              drag_icon(i->scr, event.xbutton.time, event.xbutton.x_root, event.xbutton.y_root);
 	    }
 	  } else if(scr&&event.xbutton.window==scr->menubardepth) {
 	    clickwindow=scr->menubardepth;
@@ -1356,26 +1470,21 @@ int main(int argc, char *argv[])
 	    redrawmenubar(scr, scr->menubardepth);
 	  } else if(scr&&event.xbutton.window==scr->menubar &&
 		    scr->back!=scr->root) {
-	    startscreendragging(scr, &event);
-	  }
-	  else if(scr&&scr->back==event.xbutton.window) {
+	    drag_screen(scr, event.xbutton.time, event.xbutton.x_root, event.xbutton.y_root);
+	  } else if(scr&&scr->back==event.xbutton.window) {
 	    abortfocus();
-	    startbounding(scr, scr->back, &event);
+	    drag_bounding(scr, event.xbutton.time,
+                          event.xbutton.x_root, event.xbutton.y_root,
+                          event.xbutton.x, event.xbutton.y);
 	  } else ;
-	else if(event.xbutton.button==3) {
-	  if(rubberclient || boundingscr)
-	    abortrubber();
-	  else if(scr&&(scr==mbdscr)&&clickwindow==scr->menubardepth) {
+	} else if(event.xbutton.button==3) {
+	  if(scr&&(scr==mbdscr)&&clickwindow==scr->menubardepth) {
 	    mbdclick=NULL;
 	    clickwindow=None;
 	    redrawmenubar(scr, scr->menubardepth);
-	  } else if(clickclient)
+	  } else if(clickclient) {
 	    gadgetaborted(clickclient);
-	  else if(dragiconlist)
-	    aborticondragging();
-	  else if(dragscreen)
-	    abortscreendragging();
-	  else if(scr&&!menuactive) {
+	  } else if(scr&&!menuactive) {
 	    menu_on();
 	    menuactive=scr;
 	  }
@@ -1388,17 +1497,8 @@ int main(int argc, char *argv[])
 	break;
       case ButtonRelease:
 	if(event.xbutton.button==Button1) {
-	  if(rubberclient) {
-	    if(dragclient) enddragging();
-	    else if(resizeclient) endresizing();
-	  } else if(boundingwin)
-	    endbounding(&event);
-	  else if(clickclient)
+	  if(clickclient)
 	    gadgetunclicked(clickclient, &event);
-	  else if(dragiconlist) {
-	    endicondragging(&event);
-	  } else if(dragscreen)
-	    endscreendragging();
 	  else if((scr=mbdscr)&& clickwindow==scr->menubardepth) {
 	    if(mbdclick) {
 	      mbdclick=NULL;
@@ -1413,102 +1513,6 @@ int main(int argc, char *argv[])
 	}
 	break;
       case MotionNotify:
-	do {
-	  motionx=event.xmotion.x_root;
-	  motiony=event.xmotion.y_root;
-	} while(XCheckTypedEvent(dpy, MotionNotify, &event));
-	if(dragclient) {
-	  scr=dragclient->scr;
-	  if(!prefs.opaquemove)
-	    drawrubber();
-	  rubberx=motionx-rubberx0;
-	  rubbery=motiony-rubbery0;
-	  if(!forcemoving) {
-	    if(prefs.forcemove==FM_AUTO &&
-	       (rubberx+rubberw-scr->width>(rubberw>>2) ||
-		rubbery+rubberh-scr->height>(rubberh>>2) ||
-		-rubberx>(rubberw>>2)||
-		-rubbery>(rubberh>>2)))
-	      forcemoving=1;
-	    else {
-	      if(rubberx+rubberw>scr->width)
-		rubberx=scr->width-rubberw;
-	      if(rubbery+rubberh>scr->height)
-		rubbery=scr->height-rubberh;
-	      if(rubberx<0)
-		rubberx=0;
-	      if(rubbery<0)
-		rubbery=0;
-	    }
-	  }
-	  if(prefs.opaquemove) {
-	    if(rubbery<=-(c->scr->bh))
-	      rubbery=1-(c->scr->bh);
-	    XMoveWindow(dpy, c->parent, c->x=rubberx, c->y=rubbery);
-	  } else {
-	    drawrubber();
-	  }
-	} else if(resizeclient) {
-	  int rw=rubberw, rh=rubberh;
-	  scr=resizeclient->scr;
-	  if(resizeclient->sizehints->width_inc) {
-	    rw=motionx-rubberx0-resizeclient->sizehints->base_width-
-	      resizeclient->framewidth;
-	    rw-=rw%resizeclient->sizehints->width_inc;
-	    rw+=resizeclient->sizehints->base_width;
-	    if(rw>resizeclient->sizehints->max_width)
-	      rw=resizeclient->sizehints->max_width;
-	    if(rw<resizeclient->sizehints->min_width)
-	      rw=resizeclient->sizehints->min_width;
-	    rw+=resizeclient->framewidth;
-	  }
-	  if(resizeclient->sizehints->height_inc) {
-	    rh=motiony-rubbery0-resizeclient->sizehints->base_height-
-	      resizeclient->frameheight;
-	    rh-=rh%resizeclient->sizehints->height_inc;
-	    rh+=resizeclient->sizehints->base_height;
-	    if(rh>resizeclient->sizehints->max_height)
-	      rh=resizeclient->sizehints->max_height;
-	    if(rh<resizeclient->sizehints->min_height)
-	      rh=resizeclient->sizehints->min_height;
-	    rh+=resizeclient->frameheight;
-	  }
-          if(rw!=rubberw || rh!=rubberh) {
-            if(prefs.opaqueresize) {
-              Client *c = resizeclient;
-              extern void resizeclientwindow(Client *c, int, int);
-              rubberw=rw;
-              rubberh=rh;
-              resizeclientwindow(c, rubberw, rubberh);
-            } else {
-              drawrubber();
-              rubberw=rw;
-              rubberh=rh;
-              drawrubber();
-            }
-	  }
-	} else if(dragiconlist) {
-	  int i;
-	  for(i=0; i<numdragicons; i++)
-	    XMoveWindow(dpy, dragiconlist[i].w,
-			dragiconlist[i].x+=motionx-rubberx0,
-			dragiconlist[i].y+=motiony-rubbery0);
-	  rubberx0=motionx;
-	  rubbery0=motiony;
-	} else if(dragscreen) {
-	  rubbery=motiony-rubbery0;
-	  if(rubbery<0)
-	    rubbery=0;
-	  else if(rubbery>=dragscreen->height)
-	    rubbery=dragscreen->height-1;
-	  XMoveWindow(dpy, dragscreen->back, -dragscreen->bw,
-		      (dragscreen->y=rubbery)-dragscreen->bw);
-	} else if(boundingscr) {
-	  drawrubber();
-	  rubberw=motionx-rubberx0;
-	  rubberh=motiony-rubbery0;
-	  drawrubber();
-	}
 	break;
       case KeyPress:
 	if(!dispatch_event_to_broker(&event, KeyPressMask, modules))
