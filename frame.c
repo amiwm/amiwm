@@ -511,51 +511,6 @@ void redrawclient(Client *c)
     redraw(c, c->resize);
 }
 
-extern Client *clickclient;
-extern Window clickwindow;
-extern Scrn *mbdclick, *mbdscr;
-
-void clickenter()
-{
-  if((scr=mbdscr)&& clickwindow == scr->menubardepth) {
-    mbdclick = scr;
-    redrawmenubar(scr, scr->menubardepth);
-  } else {
-    scr = clickclient->scr;
-    redraw(clickclient, clickclient->clicked=clickwindow);
-  }
-}
-
-void clickleave()
-{
-  if((scr=mbdscr)&& clickwindow == scr->menubardepth) {
-    mbdclick = NULL;
-    redrawmenubar(scr, scr->menubardepth);
-  } else {
-    scr = clickclient->scr;
-    clickclient->clicked=None;
-    redraw(clickclient, clickwindow);
-  }
-}
-
-void gadgetclicked(Client *c, Window w, XEvent *e)
-{
-  scr=c->scr;
-  redraw(c, clickwindow=(clickclient=c)->clicked=w);
-}
-
-void gadgetaborted(Client *c)
-{
-  Window w;
-  scr=c->scr;
-  if((w=c->clicked)) {
-    c->clicked=None;
-    redraw(c, w);
-  }
-  clickwindow=None;
-  clickclient=NULL;
-}
-
 static Client *topmostmappedclient(Window *children, unsigned int nchildren)
 {
   int n;
@@ -724,39 +679,4 @@ raisebottommostclient(Scrn *scr)
 	 */
 	if (children)
 		XFree(children);
-}
-
-
-void gadgetunclicked(Client *c, XEvent *e)
-{
-  extern void adjusticon(Icon *);
-  Window w;
-  scr=c->scr;
-  if((w=c->clicked)) {
-    c->clicked=None;
-    redraw(c, w);
-    if(w==c->close) {
-      if((c->proto & Pdelete)&&!(e->xbutton.state&ShiftMask))
-	sendcmessage(c->window, wm_protocols, wm_delete);
-      else
-	XKillClient(dpy, c->window);
-    } else if(w==c->depth)
-      raiselowerclient(c, -1);
-    else if(w==c->zoom) {
-      XWindowAttributes xwa;
-      XGetWindowAttributes(dpy, c->parent, &xwa);
-      XMoveWindow(dpy, c->parent, c->x=c->zoomx, c->y=c->zoomy);
-      resizeclientwindow(c, c->zoomw+c->framewidth, c->zoomh+c->frameheight);
-      c->zoomx=xwa.x;
-      c->zoomy=xwa.y;
-      c->zoomw=xwa.width-c->framewidth;
-      c->zoomh=xwa.height-c->frameheight;
-/*      XWarpPointer(dpy, None, c->zoom, 0, 0, 0, 0, 23/2, scr->h5);  */
-      sendconfig(c);
-    } else if(w==c->iconify) {
-      iconify(c);
-    }
-  }
-  clickwindow=None;
-  clickclient=NULL;
 }

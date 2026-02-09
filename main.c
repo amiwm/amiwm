@@ -72,8 +72,7 @@ typedef struct _DragIcon {
 } DragIcon;
 
 Display *dpy = NULL;
-Client *activeclient=NULL, *clickclient=NULL;
-Window clickwindow=None;
+Client *activeclient=NULL;
 Scrn *menuactive=NULL;
 Bool shape_extn=False;
 char *x_server=NULL;
@@ -82,6 +81,8 @@ XContext client_context, screen_context, icon_context, menu_context, vroot_conte
 char *progname;
 Cursor wm_curs;
 
+static Client *clickclient=NULL;
+static Window clickwindow=None;
 static int signalled=0, forcemoving=0;
 static Time last_icon_click=0, last_double=0;
 static Client *doubleclient=NULL;
@@ -104,11 +105,6 @@ extern void redraw(Client *, Window);
 extern void redrawclient(Client *);
 extern void redrawmenubar(Scrn *, Window);
 extern void resizeclientwindow(Client *c, int, int);
-extern void gadgetclicked(Client *c, Window w, XEvent *e);
-extern void gadgetunclicked(Client *c, XEvent *e);
-extern void gadgetaborted(Client *c);
-extern void clickenter(void);
-extern void clickleave(void);
 extern void menu_on(void);
 extern void menu_off(void);
 extern void menubar_enter(Window);
@@ -1370,9 +1366,15 @@ int main(int argc, char *argv[])
 	if(menuactive) {
 	  scr=menuactive;
 	  menubar_enter(event.xcrossing.window);
-	} else if(clickwindow && event.xcrossing.window == clickwindow)
-	  clickenter();
-	else if(c) {
+	} else if(clickwindow && event.xcrossing.window == clickwindow) {
+          if((scr=mbdscr)&& clickwindow == scr->menubardepth) {
+            mbdclick = scr;
+            redrawmenubar(scr, scr->menubardepth);
+          } else {
+            scr = clickclient->scr;
+            redraw(clickclient, clickclient->clicked=clickwindow);
+          }
+	} else if(c) {
 	  if((!c->active) && (c->state==NormalState) &&
 	     prefs.focus!=FOC_CLICKTOTYPE) {
 	    if(activeclient) {
@@ -1394,9 +1396,16 @@ int main(int argc, char *argv[])
 	if(menuactive) {
 	  scr=menuactive;
 	  menubar_leave(event.xcrossing.window);
-	} else if(clickwindow && event.xcrossing.window == clickwindow)
-	  clickleave();
-	else if(c) {
+        } else if(clickwindow && event.xcrossing.window == clickwindow) {
+          if((scr=mbdscr)&& clickwindow == scr->menubardepth) {
+            mbdclick = NULL;
+            redrawmenubar(scr, scr->menubardepth);
+          } else {
+            scr = clickclient->scr;
+            clickclient->clicked=None;
+            redraw(clickclient, clickwindow);
+          }
+	} else if(c) {
 	  if(c->active && event.xcrossing.window==c->parent &&
 	     event.xcrossing.detail!=NotifyInferior &&
 	     prefs.focus == FOC_FOLLOWMOUSE) {
@@ -1408,8 +1417,9 @@ int main(int argc, char *argv[])
 	    redrawclient(c);
 	  } else if(event.xcrossing.window==c->window &&
 		    event.xcrossing.detail!=NotifyInferior &&
-		    event.xcrossing.mode==NotifyNormal)
+		    event.xcrossing.mode==NotifyNormal) {
 	    instcmap(None);
+          }
 	}
 	break;
       case ButtonPress:
@@ -1446,13 +1456,15 @@ int main(int argc, char *argv[])
 	      forcemoving=(prefs.forcemove==FM_ALWAYS) ||
 		(event.xbutton.state & ShiftMask);
 	      drag_move(c, event.xbutton.time, event.xbutton.x_root, event.xbutton.y_root);
-	    } else if(event.xbutton.window==c->resize)
+	    } else if(event.xbutton.window==c->resize) {
 	      drag_resize(c, event.xbutton.time, event.xbutton.x_root, event.xbutton.y_root);
-	    else if(event.xbutton.window==c->window ||
-		    event.xbutton.window==c->parent)
+	    } else if(event.xbutton.window==c->window ||
+		    event.xbutton.window==c->parent) {
 	      ;
-	    else
-	      gadgetclicked(c, event.xbutton.window, &event);
+	    } else {
+              scr=c->scr;
+              redraw(c, clickwindow=(clickclient=c)->clicked=event.xbutton.window);
+            }
 	  } else if(i && event.xbutton.window==i->window) {
 	    abortfocus();
 	    if(i->selected && (event.xbutton.time-last_icon_click)<dblClickTime) {
@@ -1482,8 +1494,15 @@ int main(int argc, char *argv[])
 	    mbdclick=NULL;
 	    clickwindow=None;
 	    redrawmenubar(scr, scr->menubardepth);
-	  } else if(clickclient) {
-	    gadgetaborted(clickclient);
+	  } else if(clickclient != NULL) {
+            scr=clickclient->scr;
+            if(clickclient->clicked != None) {
+              Window w = clickclient->clicked;
+              clickclient->clicked = None;
+              redraw(clickclient, w);
+            }
+            clickwindow=None;
+            clickclient=NULL;
 	  } else if(scr&&!menuactive) {
 	    menu_on();
 	    menuactive=scr;
@@ -1497,9 +1516,37 @@ int main(int argc, char *argv[])
 	break;
       case ButtonRelease:
 	if(event.xbutton.button==Button1) {
-	  if(clickclient)
-	    gadgetunclicked(clickclient, &event);
-	  else if((scr=mbdscr)&& clickwindow==scr->menubardepth) {
+	  if(clickclient) {
+            scr=clickclient->scr;
+            if(clickclient->clicked != None) {
+              Window w = clickclient->clicked;
+              clickclient->clicked=None;
+              redraw(clickclient, w);
+              if(w==clickclient->close) {
+                if((clickclient->proto & Pdelete)&&!(event.xbutton.state&ShiftMask))
+                  sendcmessage(clickclient->window, wm_protocols, wm_delete);
+                else
+                  XKillClient(dpy, clickclient->window);
+              } else if(w==clickclient->depth)
+                raiselowerclient(clickclient, -1);
+              else if(w==clickclient->zoom) {
+                XWindowAttributes xwa;
+                XGetWindowAttributes(dpy, clickclient->parent, &xwa);
+                XMoveWindow(dpy, clickclient->parent, clickclient->x=clickclient->zoomx, clickclient->y=clickclient->zoomy);
+                resizeclientwindow(clickclient, clickclient->zoomw+clickclient->framewidth, clickclient->zoomh+clickclient->frameheight);
+                clickclient->zoomx=xwa.x;
+                clickclient->zoomy=xwa.y;
+                clickclient->zoomw=xwa.width-clickclient->framewidth;
+                clickclient->zoomh=xwa.height-clickclient->frameheight;
+          /*      XWarpPointer(dpy, None, clickclient->zoom, 0, 0, 0, 0, 23/2, scr->h5);  */
+                sendconfig(clickclient);
+              } else if(w==clickclient->iconify) {
+                iconify(clickclient);
+              }
+            }
+            clickwindow=None;
+            clickclient=NULL;
+	  } else if((scr=mbdscr)&& clickwindow==scr->menubardepth) {
 	    if(mbdclick) {
 	      mbdclick=NULL;
 	      redrawmenubar(scr, scr->menubardepth);
