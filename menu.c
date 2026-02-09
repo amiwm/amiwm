@@ -327,11 +327,11 @@ void redraw_item(struct Item *i, Window w)
 #else
     XmbDrawImageString(dpy, w, scr->dri.dri_FontSet,
 		       scr->menubargc, x+scr->dri.dri_Ascent+1,
-		       1+scr->dri.dri_Ascent, "»", 1);
+		       1+scr->dri.dri_Ascent, "Â»", 1);
 #endif
 #else
     XDrawImageString(dpy, w, scr->menubargc, x+scr->dri.dri_Ascent+1,
-		     1+scr->dri.dri_Ascent, "»", 1);
+		     1+scr->dri.dri_Ascent, "Â»", 1);
 #endif
   } else if(i->hotkey) {
     int x=m->width-6-scr->hotkeyspace-1+8;
