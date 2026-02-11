@@ -37,6 +37,7 @@
 #endif
 
 #include "drawinfo.h"
+#include "frame.h"
 #include "screen.h"
 #include "icon.h"
 #include "client.h"
@@ -81,8 +82,6 @@ XContext client_context, screen_context, icon_context, menu_context, vroot_conte
 char *progname;
 Cursor wm_curs;
 
-static Client *clickclient=NULL;
-static Window clickwindow=None;
 static int signalled=0, forcemoving=0;
 static Time last_icon_click=0, last_double=0;
 static Client *doubleclient=NULL;
@@ -98,12 +97,6 @@ static unsigned int meta_mask, switch_mask;
 
 static char **main_argv;
 
-extern Scrn *mbdclick, *mbdscr;
-
-extern void reparent(Client *);
-extern void redraw(Client *, Window);
-extern void redrawclient(Client *);
-extern void resizeclientwindow(Client *c, int, int);
 extern Scrn *getscreenbyroot(Window);
 extern void assimilate(Window, int, int);
 extern void deselect_all_icons(Scrn *);
@@ -111,11 +104,9 @@ extern void reparenticon(Icon *, Scrn *, int, int);
 extern void handle_client_message(Client *, XClientMessageEvent *);
 extern void handle_module_input(fd_set *);
 extern int dispatch_event_to_broker(XEvent *, unsigned long, struct module *);
-extern void reshape_frame(Client *c);
 extern void read_rc_file(char *filename, int manage_all);
 extern void init_modules();
 extern void flushmodules();
-extern void raiselowerclient(Client *, int);
 
 #ifndef AMIGAOS
 void restart_amiwm()
@@ -1355,15 +1346,7 @@ int main(int argc, char *argv[])
 	}
 	break;
       case EnterNotify:
-	if(clickwindow && event.xcrossing.window == clickwindow) {
-          if((scr=mbdscr)&& clickwindow == scr->menubardepth) {
-            mbdclick = scr;
-            redrawmenubar(scr, scr->menubardepth);
-          } else {
-            scr = clickclient->scr;
-            redraw(clickclient, clickclient->clicked=clickwindow);
-          }
-	} else if(c) {
+	if(c) {
 	  if((!c->active) && (c->state==NormalState) &&
 	     prefs.focus!=FOC_CLICKTOTYPE) {
 	    if(activeclient) {
@@ -1382,16 +1365,7 @@ int main(int argc, char *argv[])
 	}
 	break;
       case LeaveNotify:
-        if(clickwindow && event.xcrossing.window == clickwindow) {
-          if((scr=mbdscr)&& clickwindow == scr->menubardepth) {
-            mbdclick = NULL;
-            redrawmenubar(scr, scr->menubardepth);
-          } else {
-            scr = clickclient->scr;
-            clickclient->clicked=None;
-            redraw(clickclient, clickwindow);
-          }
-	} else if(c) {
+        if(c) {
 	  if(c->active && event.xcrossing.window==c->parent &&
 	     event.xcrossing.detail!=NotifyInferior &&
 	     prefs.focus == FOC_FOLLOWMOUSE) {
@@ -1407,7 +1381,7 @@ int main(int argc, char *argv[])
 	}
 	break;
       case ButtonPress:
-	if(clickwindow==None && event.xbutton.button==Button1) {
+	if(event.xbutton.button==Button1) {
 	  if(c) {
 	    if((!c->active) && prefs.focus==FOC_CLICKTOTYPE &&
 	       (c->state==NormalState)) {
@@ -1447,7 +1421,7 @@ int main(int argc, char *argv[])
 	      ;
 	    } else {
               scr=c->scr;
-              redraw(c, clickwindow=(clickclient=c)->clicked=event.xbutton.window);
+	      click_frame(c, event.xbutton.time, event.xbutton.window);
             }
 	  } else if(i && event.xbutton.window==i->window) {
 	    abortfocus();
@@ -1461,9 +1435,7 @@ int main(int argc, char *argv[])
               drag_icon(i->scr, event.xbutton.time, event.xbutton.x_root, event.xbutton.y_root);
 	    }
 	  } else if(scr&&event.xbutton.window==scr->menubardepth) {
-	    clickwindow=scr->menubardepth;
-	    mbdclick=mbdscr=scr;
-	    redrawmenubar(scr, scr->menubardepth);
+            click_menubardepth(scr, event.xbutton.time);
 	  } else if(scr&&event.xbutton.window==scr->menubar &&
 		    scr->back!=scr->root) {
 	    drag_screen(scr, event.xbutton.time, event.xbutton.x_root, event.xbutton.y_root);
@@ -1474,20 +1446,7 @@ int main(int argc, char *argv[])
                           event.xbutton.x, event.xbutton.y);
 	  } else ;
 	} else if(event.xbutton.button==3) {
-	  if(scr&&(scr==mbdscr)&&clickwindow==scr->menubardepth) {
-	    mbdclick=NULL;
-	    clickwindow=None;
-	    redrawmenubar(scr, scr->menubardepth);
-	  } else if(clickclient != NULL) {
-            scr=clickclient->scr;
-            if(clickclient->clicked != None) {
-              Window w = clickclient->clicked;
-              clickclient->clicked = None;
-              redraw(clickclient, w);
-            }
-            clickwindow=None;
-            clickclient=NULL;
-	  } else if(scr) {
+	  if(scr) {
             Window *children;
             unsigned int nchildren;
 
@@ -1518,46 +1477,6 @@ int main(int argc, char *argv[])
 	}
 	break;
       case ButtonRelease:
-	if(event.xbutton.button==Button1) {
-	  if(clickclient) {
-            scr=clickclient->scr;
-            if(clickclient->clicked != None) {
-              Window w = clickclient->clicked;
-              clickclient->clicked=None;
-              redraw(clickclient, w);
-              if(w==clickclient->close) {
-                if((clickclient->proto & Pdelete)&&!(event.xbutton.state&ShiftMask))
-                  sendcmessage(clickclient->window, wm_protocols, wm_delete);
-                else
-                  XKillClient(dpy, clickclient->window);
-              } else if(w==clickclient->depth)
-                raiselowerclient(clickclient, -1);
-              else if(w==clickclient->zoom) {
-                XWindowAttributes xwa;
-                XGetWindowAttributes(dpy, clickclient->parent, &xwa);
-                XMoveWindow(dpy, clickclient->parent, clickclient->x=clickclient->zoomx, clickclient->y=clickclient->zoomy);
-                resizeclientwindow(clickclient, clickclient->zoomw+clickclient->framewidth, clickclient->zoomh+clickclient->frameheight);
-                clickclient->zoomx=xwa.x;
-                clickclient->zoomy=xwa.y;
-                clickclient->zoomw=xwa.width-clickclient->framewidth;
-                clickclient->zoomh=xwa.height-clickclient->frameheight;
-          /*      XWarpPointer(dpy, None, clickclient->zoom, 0, 0, 0, 0, 23/2, scr->h5);  */
-                sendconfig(clickclient);
-              } else if(w==clickclient->iconify) {
-                iconify(clickclient);
-              }
-            }
-            clickwindow=None;
-            clickclient=NULL;
-	  } else if((scr=mbdscr)&& clickwindow==scr->menubardepth) {
-	    if(mbdclick) {
-	      mbdclick=NULL;
-	      redrawmenubar(scr, scr->menubardepth);
-	      screentoback();
-	    }
-	    clickwindow=None;
-	  }
-	}
 	break;
       case MotionNotify:
 	break;

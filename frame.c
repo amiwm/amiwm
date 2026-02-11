@@ -10,6 +10,7 @@
 
 #include "drawinfo.h"
 #include "screen.h"
+#include "frame.h"
 #include "icon.h"
 #include "client.h"
 #include "icc.h"
@@ -28,7 +29,6 @@ extern Display *dpy;
 extern XContext client_context, screen_context;
 extern Cursor wm_curs;
 extern int shape_extn;
-extern void redrawmenubar(Scrn *, Window);
 void reshape_frame(Client *c);
 
 Window creategadget(Client *c, Window p, int x, int y, int w, int h)
@@ -679,4 +679,57 @@ raisebottommostclient(Scrn *scr)
 	 */
 	if (children)
 		XFree(children);
+}
+
+void click_frame(Client *c, Time time, Window w)
+{
+  extern void get_drag_event(XEvent *event);
+
+  if (w != c->close && w != c->iconify && w != c->zoom && w != c->depth)
+    return;
+  XGrabPointer(dpy, w, True, ButtonPressMask|ButtonReleaseMask,
+              GrabModeAsync, GrabModeAsync, False, None, time);
+  c->clicked = w;
+  redraw(c, w);
+  for (;;) {
+    XEvent event;
+
+    get_drag_event(&event);
+    if (event.type != ButtonRelease)
+      continue;
+    c->clicked = None;
+    redraw(c, w);
+    XUngrabPointer(dpy, event.xbutton.time);
+    if (event.xbutton.x < 0 || event.xbutton.y < 0)
+      break;    /* pointer to left/top of button */
+    if (event.xbutton.window == c->close) {
+      if (event.xbutton.x >= 19 || event.xbutton.y >= c->scr->bh)
+         break;
+      if((c->proto & Pdelete)&&!(event.xbutton.state&ShiftMask))
+        sendcmessage(c->window, wm_protocols, wm_delete);
+      else
+        XKillClient(dpy, c->window);
+    } else if (event.xbutton.window == c->depth) {
+      if (event.xbutton.x >= 23 || event.xbutton.y >= c->scr->bh)
+         break;
+      raiselowerclient(c, -1);
+    } else if (event.xbutton.window == c->zoom) {
+      if (event.xbutton.x >= 23 || event.xbutton.y >= c->scr->bh)
+         break;
+      XWindowAttributes xwa;
+      XGetWindowAttributes(dpy, c->parent, &xwa);
+      XMoveWindow(dpy, c->parent, c->x=c->zoomx, c->y=c->zoomy);
+      resizeclientwindow(c, c->zoomw+c->framewidth, c->zoomh+c->frameheight);
+      c->zoomx=xwa.x;
+      c->zoomy=xwa.y;
+      c->zoomw=xwa.width-c->framewidth;
+      c->zoomh=xwa.height-c->frameheight;
+      sendconfig(c);
+    } else if (event.xbutton.window == c->iconify) {
+      if (event.xbutton.x >= 23 || event.xbutton.y >= c->scr->bh)
+         break;
+      iconify(c);
+    }
+    break;
+  }
 }
