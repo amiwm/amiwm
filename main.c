@@ -1381,6 +1381,9 @@ int main(int argc, char *argv[])
 	}
 	break;
       case ButtonPress:
+        if(XFindContext(dpy, event.xbutton.window, client_context, (XPointer*)&c))
+          if(XFindContext(dpy, event.xbutton.subwindow, client_context, (XPointer*)&c))
+	    c = NULL;
 	if(event.xbutton.button==Button1) {
 	  if(c) {
 	    if((!c->active) && prefs.focus==FOC_CLICKTOTYPE &&
@@ -1446,7 +1449,7 @@ int main(int argc, char *argv[])
                           event.xbutton.x, event.xbutton.y);
 	  } else ;
 	} else if(event.xbutton.button==3) {
-	  if(scr) {
+	  if(c == NULL && scr) {
             Window *children;
             unsigned int nchildren;
 
