@@ -224,7 +224,7 @@ void set_client_list(Window root)
   if ((wins = calloc(nclients, sizeof(*wins))) == NULL)
     return;
   for (Client *c = clients; c != NULL; c = c->next)
-    if (c->scr->root == root && c->state == NormalState)
+    if (c->scr->root == root && c->state != WithdrawnState)
       wins[nwins++] = c->window;
   XChangeProperty(dpy, root, ATOMS[_NET_CLIENT_LIST], XA_WINDOW, 32,
                   PropModeReplace, (void *)wins, nwins);
