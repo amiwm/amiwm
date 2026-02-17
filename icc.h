@@ -17,8 +17,6 @@ extern long _getprop(Window, Atom, Atom, long, char **);
 extern void getwflags(Client *);
 extern Window get_transient_for(Window);
 
-extern Atom wm_state, wm_change_state, wm_protocols, wm_delete, wm_take_focus, wm_colormaps, wm_hints, amiwm_screen, swm_vroot;
-
 #define Pdelete 1
 #define Ptakefocus 2
 #define Psizebottom 4
@@ -33,5 +31,34 @@ extern Atom wm_state, wm_change_state, wm_protocols, wm_delete, wm_take_focus, w
   .format = 32, \
   .data.l = {(long)(x), CurrentTime, __VA_ARGS__}, \
 }})
+
+#define ATOMS_TABLE(X) \
+  X(AMIWM_APPICONMSG) \
+  X(AMIWM_APPWINDOWMSG) \
+  X(AMIWM_SCREEN) \
+  X(AMIWM_WFLAGS) \
+  X(UTF8_STRING) \
+  X(WM_CHANGE_STATE) \
+  X(WM_CLASS) \
+  X(WM_COLORMAP_WINDOWS) \
+  X(WM_DELETE_WINDOW) \
+  X(WM_PROTOCOLS) \
+  X(WM_STATE) \
+  X(WM_TAKE_FOCUS) \
+  X(_NET_SUPPORTED) \
+  X(_NET_SUPPORTING_WM_CHECK) \
+  X(_NET_WM_NAME) \
+  X(_NET_WM_STATE) \
+  X(_NET_WM_STATE_FULLSCREEN) \
+  X(__SWM_VROOT)
+
+enum {
+#define X(atom) atom,
+  ATOMS_TABLE(X)
+  NATOMS
+#undef  X
+};
+
+extern Atom ATOMS[NATOMS];
 
 #endif
