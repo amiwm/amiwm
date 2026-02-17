@@ -39,10 +39,7 @@ void init_atoms(void)
 void setsupports(Window root, Window checkwin)
 {
   XChangeProperty(dpy, root, ATOMS[_NET_SUPPORTED], XA_ATOM, 32,
-    PropModeReplace, (void *)(Atom[]){
-      ATOMS[_NET_WM_STATE],
-      ATOMS[_NET_WM_STATE_FULLSCREEN],
-    }, 2);
+    PropModeReplace, (void *)&ATOMS[_NET_SUPPORTED], NATOMS-_NET_SUPPORTED);
   XChangeProperty(dpy, root, ATOMS[_NET_SUPPORTING_WM_CHECK], XA_WINDOW, 32,
     PropModeReplace, (void *)(Window[]){checkwin}, 1);
   XChangeProperty(dpy, checkwin, ATOMS[_NET_SUPPORTING_WM_CHECK], XA_WINDOW, 32,
