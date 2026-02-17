@@ -213,6 +213,24 @@ void getstate(Client *c)
   }
 }
 
+void set_client_list(Window root)
+{
+  int nwins = 0;
+  int nclients = 0;
+  Window *wins = NULL;
+
+  for (Client *c = clients; c != NULL; c = c->next)
+    nclients++;
+  if ((wins = calloc(nclients, sizeof(*wins))) == NULL)
+    return;
+  for (Client *c = clients; c != NULL; c = c->next)
+    if (c->scr->root == root && c->state == NormalState)
+      wins[nwins++] = c->window;
+  XChangeProperty(dpy, root, ATOMS[_NET_CLIENT_LIST], XA_WINDOW, 32,
+                  PropModeReplace, (void *)wins, nwins);
+  free(wins);
+}
+
 Client *createclient(Window w)
 {
   extern void checkstyle(Client *c);
@@ -357,7 +375,7 @@ void rmclient(Client *c)
     free(c);
 }
 
-int screen_has_clients()
+int screen_has_clients(Scrn *scr)
 {
   int n = 0;
   Client *c = clients;

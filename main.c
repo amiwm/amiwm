@@ -1192,6 +1192,9 @@ int main(int argc, char *argv[])
 	  }
 	  c->reparenting = 0;
 	}
+	if (c != NULL) {
+	  set_client_list(c->scr->root);
+	}
 	break;
       case ConfigureNotify:
 	if((!XFindContext(dpy, event.xconfigure.window, icon_context,
@@ -1329,6 +1332,7 @@ int main(int argc, char *argv[])
             iconify(c);
 	    break;
 	  }
+	  set_client_list(c->scr->root);
 	}
 	break;
       case MapNotify:

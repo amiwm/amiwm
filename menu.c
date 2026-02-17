@@ -803,7 +803,6 @@ void drag_menu(Scrn *s)
 void menuaction(struct Item *i, struct Item *si)
 {
   extern void restart_amiwm(void);
-  extern int screen_has_clients(void);
   struct Menu *m;
   struct Item *mi;
   struct ToolItem *ti;
@@ -920,7 +919,7 @@ void menuaction(struct Item *i, struct Item *si)
     if(item==1) {
       if(scr->behind == scr)
 	wberror(scr,"Cannot close last Screen");
-      else if(screen_has_clients())
+      else if(screen_has_clients(scr))
 	wberror(scr,"Can't close a screen with running programs on it");
       else
 	closescreen();

@@ -41,6 +41,7 @@ typedef struct _Client {
 
 extern Client *clients;
 
+extern int screen_has_clients(struct _Scrn *);
 extern Client *getclient(Window);
 extern Client *getclientbyicon(Window);
 extern Client *createclient(Window);
@@ -54,5 +55,6 @@ extern void grav_map_win_to_frame(Client *, int, int, int *, int *);
 extern void setclientstate(Client *, int);
 extern void reparent_client(struct _Scrn *s, Client *client);
 extern void fullscreen(Client *, int);
+extern void set_client_list(Window root);
 
 #endif

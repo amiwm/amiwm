@@ -33,6 +33,7 @@ extern Window get_transient_for(Window);
 }})
 
 #define NET_ATOMS \
+  X(_NET_CLIENT_LIST) \
   X(_NET_SUPPORTING_WM_CHECK) \
   X(_NET_WM_NAME) \
   X(_NET_WM_STATE) \
