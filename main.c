@@ -758,11 +758,10 @@ static void drag_icon(Scrn *s, Time time, int x_root, int y_root)
 
       if (c != NULL) {
         if (c->module != NULL) {
-          extern Atom amiwm_appwindowmsg;
           XTranslateCoordinates(dpy, s->back, c->window, -4, -4, &wx, &wy, &ch);
           for (int n = 0; n < nicons; n++) {
             dispatch_event_to_broker(mkcmessage(
-              c->window, amiwm_appwindowmsg,dragging[n].icon->window,
+              c->window, ATOMS[AMIWM_APPWINDOWMSG],dragging[n].icon->window,
               dragging[n].x + wx, dragging[n].y + wy
             ), 0, c->module);
           }
@@ -878,13 +877,12 @@ static void drag_resize(Client *c, Time time, int x_root, int y_root)
 
 static void do_icon_double_click(Scrn *scr)
 {
-  extern Atom amiwm_appiconmsg;
   Icon *i, *next;
 
   for(i=scr->firstselected; i; i=next) {
     next=i->nextselected;
     if(i->module) {
-      dispatch_event_to_broker(mkcmessage(i->window, amiwm_appiconmsg, 0),
+      dispatch_event_to_broker(mkcmessage(i->window, ATOMS[AMIWM_APPICONMSG], 0),
 			       0, i->module);
     } else {
       deiconify(i);

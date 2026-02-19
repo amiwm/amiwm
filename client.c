@@ -200,7 +200,7 @@ void setclientstate(Client *c, int state)
     }
   }
   c->state = state;
-  XChangeProperty(dpy, c->window, wm_state, wm_state, 32,
+  XChangeProperty(dpy, c->window, ATOMS[WM_STATE], ATOMS[WM_STATE], 32,
 		  PropModeReplace, (unsigned char *)data, 2);
 }
 
@@ -208,7 +208,7 @@ void getstate(Client *c)
 {
   long *data=NULL;
 
-  if(_getprop(c->window, wm_state, wm_state, 2l, (char **)&data)>0) {
+  if(_getprop(c->window, ATOMS[WM_STATE], ATOMS[WM_STATE], 2l, (char **)&data)>0) {
     c->state=*data;
     XFree((char *)data);
   }
@@ -442,7 +442,7 @@ reparent_client(Scrn *s, Client *client)
     if(client->parent != client->scr->root)
       XReparentWindow(dpy, client->parent, s->back, client->x, client->y);
     if (s->deftitle != NULL)
-      setstringprop(client->window, amiwm_screen, s->deftitle);
+      setstringprop(client->window, ATOMS[AMIWM_SCREEN], s->deftitle);
     sendconfig(client);
 }
 

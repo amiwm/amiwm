@@ -190,7 +190,7 @@ void reparent(Client *c)
       c->scr = lc->fsscr;
     else
       c->scr = lc->scr;
-  } else if(XGetTextProperty(dpy, c->window, &screen_prop, amiwm_screen)) {
+  } else if(XGetTextProperty(dpy, c->window, &screen_prop, ATOMS[AMIWM_SCREEN])) {
     do {
       if(s->root == scr->root &&
 	 (!s->deftitle[screen_prop.nitems])&&!strncmp(s->deftitle,
@@ -329,7 +329,7 @@ void reparent(Client *c)
   XMapSubwindows(dpy, c->parent);
   sendconfig(c);
   if (scr->deftitle != NULL)
-    setstringprop(c->window, amiwm_screen, scr->deftitle);
+    setstringprop(c->window, ATOMS[AMIWM_SCREEN], scr->deftitle);
   if(prefs.focus == FOC_CLICKTOTYPE)
     XGrabButton(dpy, Button1, AnyModifier, c->parent, True,
 		ButtonPressMask, GrabModeSync, GrabModeAsync, None, wm_curs);
@@ -737,7 +737,7 @@ void gadgetunclicked(Client *c, XEvent *e)
     redraw(c, w);
     if(w==c->close) {
       if((c->proto & Pdelete)&&!(e->xbutton.state&ShiftMask))
-	sendcmessage(c->window, wm_protocols, wm_delete);
+	sendcmessage(c->window, ATOMS[WM_PROTOCOLS], ATOMS[WM_DELETE_WINDOW]);
       else
 	XKillClient(dpy, c->window);
     } else if(w==c->depth)
