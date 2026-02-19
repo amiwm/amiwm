@@ -31,7 +31,14 @@ extern Window get_transient_for(Window);
   .data.l = {(long)(x), CurrentTime, __VA_ARGS__}, \
 }})
 
+#define NET_ATOMS \
+  X(_NET_SUPPORTING_WM_CHECK) \
+  X(_NET_WM_NAME) \
+  X(_NET_WM_STATE) \
+  X(_NET_WM_STATE_FULLSCREEN) \
+
 #define ATOMS_TABLE(X) \
+  X(__SWM_VROOT) \
   X(AMIWM_APPICONMSG) \
   X(AMIWM_APPWINDOWMSG) \
   X(AMIWM_SCREEN) \
@@ -45,11 +52,7 @@ extern Window get_transient_for(Window);
   X(WM_STATE) \
   X(WM_TAKE_FOCUS) \
   X(_NET_SUPPORTED) \
-  X(_NET_SUPPORTING_WM_CHECK) \
-  X(_NET_WM_NAME) \
-  X(_NET_WM_STATE) \
-  X(_NET_WM_STATE_FULLSCREEN) \
-  X(__SWM_VROOT)
+  NET_ATOMS     /* this must come last */
 
 enum {
 #define X(atom) atom,
