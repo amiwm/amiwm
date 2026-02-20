@@ -149,10 +149,12 @@ void checksizehints(Client *c)
 
 void open_fscrn(Client *c)
 {
-  XUnmapWindow(dpy, c->parent);
   c->fsscr = scr = openscreen(NULL, scr->root);
   c->reparenting = 1;
-  XReparentWindow(dpy, c->window, scr->back, 0, 0);
+  XReparentWindow(dpy, c->parent, c->fsscr->back, 0, 0);
+  XRaiseWindow(dpy, c->window);
+  XMoveResizeWindow(dpy, c->parent, 0, 0, c->fsscr->width, c->fsscr->height);
+  XMoveResizeWindow(dpy, c->window, 0, 0, c->fsscr->width, c->fsscr->height);
   for (Client *dialog = clients; dialog != NULL; dialog = dialog->next)
     if (dialog->leader == c)
       reparent_client(c->fsscr, dialog);
@@ -171,7 +173,9 @@ void close_fscrn(Client *c, int state)
 {
   if (c->fsscr == NULL)
     return;
-  XReparentWindow(dpy, c->window, c->parent, 4, c->scr->bh);
+  XReparentWindow(dpy, c->parent, c->scr, c->x, c->y);
+  XMoveResizeWindow(dpy, c->parent, c->x, c->y, c->pwidth, c->pheight);
+  XMoveResizeWindow(dpy, c->window, 4, c->scr->bh, c->pwidth-c->framewidth, c->pheight-c->frameheight);
   XResizeWindow(dpy, c->window, c->pwidth-c->framewidth, c->pheight-c->frameheight);
   XLowerWindow(dpy, c->window);
   scr = c->fsscr;
