@@ -323,15 +323,15 @@ void redraw_item(struct Item *i, Window w)
 #ifdef HAVE_XUTF8DRAWIMAGESTRING
     Xutf8DrawImageString(dpy, w, scr->dri.dri_FontSet,
 			 scr->menubargc, x+scr->dri.dri_Ascent+1,
-			 1+scr->dri.dri_Ascent, "\302\273", 2);
+			 1+scr->dri.dri_Ascent, "Â»", 2);
 #else
     XmbDrawImageString(dpy, w, scr->dri.dri_FontSet,
 		       scr->menubargc, x+scr->dri.dri_Ascent+1,
-		       1+scr->dri.dri_Ascent, "»", 1);
+		       1+scr->dri.dri_Ascent, "\xBB", 1);
 #endif
 #else
     XDrawImageString(dpy, w, scr->menubargc, x+scr->dri.dri_Ascent+1,
-		     1+scr->dri.dri_Ascent, "»", 1);
+		     1+scr->dri.dri_Ascent, "\xBB", 1);
 #endif
   } else if(i->hotkey) {
     int x=m->width-6-scr->hotkeyspace-1+8;
