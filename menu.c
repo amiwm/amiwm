@@ -50,7 +50,7 @@ extern void setfocus(Window);
 extern void flushmodules();
 extern void wberror(Scrn *, char *);
 
-Scrn *mbdclick=NULL, *mbdscr=NULL;
+Scrn *mbdclick=NULL;
 
 static struct ToolItem {
   struct ToolItem *next;
@@ -594,7 +594,7 @@ void redrawmenubar(Scrn *scr, Window w)
     }
   } else if(w==scr->menubardepth) {
     /* Menubar depth widget */
-    if(!mbdclick) {
+    if(mbdclick != scr) {
       XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[SHADOWPEN]);
       XDrawRectangle(dpy, w, scr->menubargc, 4, scr->h2, 10, scr->h6-scr->h2);
     }
@@ -602,12 +602,12 @@ void redrawmenubar(Scrn *scr, Window w)
     XFillRectangle(dpy, w, scr->menubargc, 8, scr->h4, 10, scr->h8-scr->h4);
     XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[SHADOWPEN]);
     XDrawRectangle(dpy, w, scr->menubargc, 8, scr->h4, 10, scr->h8-scr->h4);
-    if(mbdclick)
+    if(mbdclick == scr)
       XDrawRectangle(dpy, w, scr->menubargc, 4, scr->h2, 10, scr->h6-scr->h2);
-    XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[mbdclick?SHADOWPEN:SHINEPEN]);
+    XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[mbdclick==scr?SHADOWPEN:SHINEPEN]);
     XDrawLine(dpy, w, scr->menubargc, 0, 0, 22, 0);
     XDrawLine(dpy, w, scr->menubargc, 0, 0, 0, scr->bh-2);
-    XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[mbdclick?SHINEPEN:SHADOWPEN]);
+    XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[mbdclick==scr?SHINEPEN:SHADOWPEN]);
     XDrawLine(dpy, w, scr->menubargc, 0, scr->bh-1, 22, scr->bh-1);
     XDrawLine(dpy, w, scr->menubargc, 22, 0, 22, scr->bh-1);
   } else {
