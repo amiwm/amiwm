@@ -61,9 +61,9 @@ void setvirtualroot(Scrn *s)
 
     if(s==old_vroot) return;
     if(old_vroot)
-      XDeleteProperty(dpy, old_vroot->back, swm_vroot);
+      XDeleteProperty(dpy, old_vroot->back, ATOMS[__SWM_VROOT]);
     setvroot(s->root, s);
-    XChangeProperty(dpy, s->back, swm_vroot, XA_WINDOW, 32, PropModeReplace,
+    XChangeProperty(dpy, s->back, ATOMS[__SWM_VROOT], XA_WINDOW, 32, PropModeReplace,
 		    (unsigned char *)&(s->back), 1);
   }
 }

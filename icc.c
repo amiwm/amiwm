@@ -1,3 +1,5 @@
+#include <X11/Xatom.h>
+
 #include "drawinfo.h"
 #include "screen.h"
 #include "icc.h"
@@ -5,7 +7,7 @@
 #include "style.h"
 #include "prefs.h"
 
-#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -16,54 +18,34 @@ extern struct Library *XLibBase;
 
 extern void redraw(Client *, Window);
 
-Atom utf8_string, net_wm_name;
-Atom wm_state, wm_change_state, wm_protocols, wm_delete, wm_take_focus;
-Atom wm_colormaps, wm_name, wm_normal_hints, wm_hints, wm_icon_name, wm_class;
-Atom net_supporting_wm_check, net_supported, net_wm_state, net_wm_state_fullscreen;
-Atom amiwm_screen, swm_vroot, amiwm_wflags, amiwm_appiconmsg, amiwm_appwindowmsg;
+Atom ATOMS[NATOMS];
 
 extern Display *dpy;
+extern char *progname;
 
 void init_atoms()
 {
-  utf8_string = XInternAtom(dpy, "UTF8_STRING", False);
-  wm_state = XInternAtom(dpy, "WM_STATE", False);
-  wm_change_state = XInternAtom(dpy, "WM_CHANGE_STATE", False);
-  wm_protocols = XInternAtom(dpy, "WM_PROTOCOLS", False);
-  wm_delete = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
-  wm_take_focus = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
-  wm_colormaps = XInternAtom(dpy, "WM_COLORMAP_WINDOWS", False);
-  wm_name = XInternAtom(dpy, "WM_NAME", False);
-  wm_normal_hints = XInternAtom(dpy, "WM_NORMAL_HINTS", False);
-  wm_hints = XInternAtom(dpy, "WM_HINTS", False);
-  wm_icon_name = XInternAtom(dpy, "WM_ICON_NAME", False);
-  wm_class = XInternAtom(dpy, "WM_CLASS", False);
-  net_supported = XInternAtom(dpy, "_NET_SUPPORTED", False);
-  net_supporting_wm_check = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False);
-  net_wm_name = XInternAtom(dpy, "_NET_WM_NAME", False);
-  net_wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
-  net_wm_state_fullscreen = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
-  amiwm_screen = XInternAtom(dpy, "AMIWM_SCREEN", False);
-  swm_vroot = XInternAtom(dpy, "__SWM_VROOT", False);
-  amiwm_wflags = XInternAtom(dpy, "AMIWM_WFLAGS", False);
-  amiwm_appiconmsg = XInternAtom(dpy, "AMIWM_APPICONMSG", False);
-  amiwm_appwindowmsg = XInternAtom(dpy, "AMIWM_APPWINDOWMSG", False);
+  static char *atom_names[NATOMS] = {
+#define X(atom) [atom] = #atom,
+    ATOMS_TABLE(X)
+#undef  X
+  };
+
+  if (!XInternAtoms(dpy, atom_names, NATOMS, False, ATOMS)) {
+    fprintf(stderr, "%s: cannot intern atoms\n", progname);
+    exit(1);
+  }
 }
 
 void setsupports(Window root, Window checkwin)
 {
-  Atom atoms[] = {
-    net_wm_state,
-    net_wm_state_fullscreen,
-  };
-  XChangeProperty(dpy, root, net_supported, XA_ATOM, 32,
-    PropModeReplace, (unsigned char *)atoms,
-    sizeof(atoms)/sizeof(atoms[0]));
-  XChangeProperty(dpy, root, net_supporting_wm_check, XA_WINDOW, 32,
+  XChangeProperty(dpy, root, ATOMS[_NET_SUPPORTED], XA_ATOM, 32,
+    PropModeReplace, (void *)&ATOMS[_NET_SUPPORTED], NATOMS-_NET_SUPPORTED);
+  XChangeProperty(dpy, root, ATOMS[_NET_SUPPORTING_WM_CHECK], XA_WINDOW, 32,
     PropModeReplace, (void *)(Window[]){checkwin}, 1);
-  XChangeProperty(dpy, checkwin, net_supporting_wm_check, XA_WINDOW, 32,
+  XChangeProperty(dpy, checkwin, ATOMS[_NET_SUPPORTING_WM_CHECK], XA_WINDOW, 32,
     PropModeReplace, (void *)(Window[]){checkwin}, 1);
-  XChangeProperty(dpy, checkwin, net_wm_name, utf8_string, 8,
+  XChangeProperty(dpy, checkwin, ATOMS[_NET_WM_NAME], ATOMS[UTF8_STRING], 8,
     PropModeReplace, (void *)"AmiWM", 5);
 }
 
@@ -86,13 +68,13 @@ void getwmstate(Client *c)
   Window w;
 
   w = c->window;
-  if ((n = _getprop(w, net_wm_state, XA_ATOM, 20L, (char**)&p)) < 0)
+  if ((n = _getprop(w, ATOMS[_NET_WM_STATE], XA_ATOM, 20L, (char**)&p)) < 0)
     return;
   c->fullscreen = 0;
   if (!n)
     return;
   for (i = 0; i < n; i++)
-    if (p[i] == net_wm_state_fullscreen)
+    if (p[i] == ATOMS[_NET_WM_STATE_FULLSCREEN])
       c->fullscreen = 1;
   XFree((char *) p);
 }
@@ -100,13 +82,11 @@ void getwmstate(Client *c)
 void setwmstate(Client *c)
 {
   if (c->fullscreen) {
-    Atom data[] = {
-      net_wm_state_fullscreen
-    };
-    XChangeProperty(dpy, c->window, net_wm_state, XA_ATOM, 32, PropModeReplace,
-                   (unsigned char *)data, 1);
-  } else
-    XDeleteProperty(dpy, c->window, net_wm_state);
+    XChangeProperty(dpy, c->window, ATOMS[_NET_WM_STATE], XA_ATOM, 32, PropModeReplace,
+                   (void *)&ATOMS[_NET_WM_STATE_FULLSCREEN], 1);
+  } else {
+    XDeleteProperty(dpy, c->window, ATOMS[_NET_WM_STATE]);
+  }
 }
 
 
@@ -139,7 +119,7 @@ void getwflags(Client *c)
   long n;
 
   c->wflags = 0;
-  if ((n = _getprop(c->window, amiwm_wflags, amiwm_wflags, 1L, (char**)&p)) <= 0)
+  if ((n = _getprop(c->window, ATOMS[AMIWM_WFLAGS], ATOMS[AMIWM_WFLAGS], 1L, (char**)&p)) <= 0)
     return;
 
   c->wflags = p[0];
@@ -156,13 +136,13 @@ void getproto(Client *c)
 
   w = c->window;
   c->proto &= ~(Pdelete|Ptakefocus);
-  if ((n = _getprop(w, wm_protocols, XA_ATOM, 20L, (char**)&p)) <= 0)
+  if ((n = _getprop(w, ATOMS[WM_PROTOCOLS], XA_ATOM, 20L, (char**)&p)) <= 0)
     return;
 
   for (i = 0; i < n; i++)
-    if (p[i] == wm_delete)
+    if (p[i] == ATOMS[WM_DELETE_WINDOW])
       c->proto |= Pdelete;
-    else if (p[i] == wm_take_focus)
+    else if (p[i] == ATOMS[WM_TAKE_FOCUS])
       c->proto |= Ptakefocus;
   
   XFree((char *) p);
@@ -202,7 +182,7 @@ void checkstyle(Client *c)
   if(prefs.firststyle==NULL)
     return;
 
-  if(!XGetTextProperty(dpy, c->window, &class_name, wm_class))
+  if(!XGetTextProperty(dpy, c->window, &class_name, XA_WM_CLASS))
     class_name.value=NULL;
   else
     /* This value seems to be 2x it's correct value always... */
@@ -237,7 +217,7 @@ void propertychange(Client *c, Atom a)
   extern void checksizehints(Client *);
   extern void newicontitle(Client *);
 
-  if(a==wm_name) {
+  if(a==XA_WM_NAME) {
 #ifdef USE_FONTSETS
     XTextProperty prop;
     if(c->title) {
@@ -265,9 +245,9 @@ void propertychange(Client *c, Atom a)
       XClearWindow(dpy, c->drag);
       redraw(c, c->drag);
     }
-  } else if(a==wm_normal_hints) {
+  } else if(a==XA_WM_NORMAL_HINTS) {
     checksizehints(c);
-  } else if(a==wm_hints) {
+  } else if(a==XA_WM_HINTS) {
     XWMHints *xwmh;
     if((xwmh=XGetWMHints(dpy, c->window))) {
       if((xwmh->flags&(IconWindowHint|IconPixmapHint))&&c->icon) {
@@ -281,25 +261,25 @@ void propertychange(Client *c, Atom a)
       }
       XFree(xwmh);
     }
-  } else if(a==wm_protocols) {
+  } else if(a==ATOMS[WM_PROTOCOLS]) {
     getproto(c);
-  } else if(a==wm_icon_name) {
+  } else if(a==XA_WM_ICON_NAME) {
     if(c->style==NULL)
       checkstyle(c);
     if(c->icon) newicontitle(c);
-  } else if(a==wm_state) {
+  } else if(a==ATOMS[WM_STATE]) {
     if(c->parent==c->scr->root) {
       getstate(c);
       if(c->state==NormalState)
 	c->state=WithdrawnState;
     }
-  } else if(a==wm_class && c->style==NULL)
+  } else if(a==XA_WM_CLASS && c->style==NULL)
     checkstyle(c);
 }
 
 void handle_client_message(Client *c, XClientMessageEvent *xcme)
 {
-  if(xcme->message_type == wm_change_state) {
+  if(xcme->message_type == ATOMS[WM_CHANGE_STATE]) {
     int state=xcme->data.l[0];
     if(state==IconicState)
       if(c->state!=IconicState) {
@@ -328,10 +308,10 @@ void handle_client_message(Client *c, XClientMessageEvent *xcme)
 	  XMapRaised(dpy, c->parent);
 	setclientstate(c, NormalState);
       }
-  } else if (xcme->message_type == net_wm_state) {
+  } else if (xcme->message_type == ATOMS[_NET_WM_STATE]) {
     int action=xcme->data.l[0];
     Atom prop=xcme->data.l[1];
-    if (prop == net_wm_state_fullscreen)
+    if (prop == ATOMS[_NET_WM_STATE_FULLSCREEN])
       switch (action) {
       case 0: fullscreen(c, 0); break; /* _NET_WM_STATE_REMOVE */
       case 1: fullscreen(c, 1); break; /* _NET_WM_STATE_ADD */
