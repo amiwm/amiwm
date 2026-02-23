@@ -173,7 +173,7 @@ void close_fscrn(Client *c, int state)
 {
   if (c->fsscr == NULL)
     return;
-  XReparentWindow(dpy, c->parent, c->scr, c->x, c->y);
+  XReparentWindow(dpy, c->parent, c->scr->back, c->x, c->y);
   XMoveResizeWindow(dpy, c->parent, c->x, c->y, c->pwidth, c->pheight);
   XMoveResizeWindow(dpy, c->window, 4, c->scr->bh, c->pwidth-c->framewidth, c->pheight-c->frameheight);
   XResizeWindow(dpy, c->window, c->pwidth-c->framewidth, c->pheight-c->frameheight);
