@@ -23,12 +23,12 @@
 #include <X11/Xlib.h>
 
 #include "alloc.h"
-#include "drawinfo.h"
-#include "screen.h"
-#include "prefs.h"
-#include "module.h"
 #include "client.h"
+#include "drawinfo.h"
 #include "icon.h"
+#include "module.h"
+#include "prefs.h"
+#include "screen.h"
 #include "version.h"
 
 extern XContext client_context, icon_context, screen_context;

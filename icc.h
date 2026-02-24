@@ -3,19 +3,6 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
-#include "client.h"
-
-extern void init_atoms(void);
-extern void setsupports(Window, Window);
-extern void sendcmessage(Window, Atom, long);
-extern void getproto(Client *c);
-extern void getwmstate(Client *c);
-extern void setwmstate(Client *c);
-extern void setstringprop(Window, Atom, char *);
-extern void propertychange(Client *, Atom);
-extern long _getprop(Window, Atom, Atom, long, char **);
-extern void getwflags(Client *);
-extern Window get_transient_for(Window);
 
 #define Pdelete 1
 #define Ptakefocus 2
@@ -62,5 +49,18 @@ enum {
 };
 
 extern Atom ATOMS[NATOMS];
+
+extern Window get_transient_for(Window);
+extern long _getprop(Window, Atom, Atom, long, char **);
+extern void getproto(struct _Client *c);
+extern void getwflags(struct _Client *);
+extern void getwmstate(struct _Client *c);
+extern void handle_client_message(struct _Client *, XClientMessageEvent *);
+extern void init_atoms(void);
+extern void propertychange(struct _Client *, Atom);
+extern void sendcmessage(Window, Atom, long);
+extern void setstringprop(Window, Atom, char *);
+extern void setsupports(Window, Window);
+extern void setwmstate(struct _Client *c);
 
 #endif

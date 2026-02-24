@@ -1,3 +1,16 @@
+#ifdef HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif
+
+#ifdef AMIGAOS
+#define fd_set XTransFdset
+#undef FD_ZERO
+#undef FD_SET
+#define FD_ZERO XTransFdZero
+#define FD_SET XTransFdSet
+#define select XTransSelect
+#endif
+
 #define MCMD_NOP 1
 #define MCMD_GET_VERSION 2
 #define MCMD_SEND_EVENT 4
@@ -68,3 +81,9 @@ extern struct module {
   } broker;
   struct Item *menuitems;
 } *modules;
+
+extern int dispatch_event_to_broker(XEvent *, unsigned long, struct module *);
+extern void flushmodules(void);
+extern void handle_module_input(fd_set *);
+extern void init_modules(void);
+extern void mod_menuselect(struct module *, int, int, int);

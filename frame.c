@@ -10,6 +10,8 @@
 
 #include "drawinfo.h"
 #include "screen.h"
+#include "menu.h"
+#include "frame.h"
 #include "icon.h"
 #include "client.h"
 #include "icc.h"
@@ -28,7 +30,6 @@ extern Display *dpy;
 extern XContext client_context, screen_context;
 extern Cursor wm_curs;
 extern int shape_extn;
-extern void redrawmenubar(Scrn *, Window);
 void reshape_frame(Client *c);
 
 Window creategadget(Client *c, Window p, int x, int y, int w, int h)

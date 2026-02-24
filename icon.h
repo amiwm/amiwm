@@ -28,18 +28,21 @@ struct IconPixmaps
   struct ColorStore cs, cs2;
 };
 
-extern void redrawicon(Icon *, Window);
-extern void rmicon(Icon *);
-extern void createicon(Client *);
-extern void createiconicon(Icon *i, XWMHints *);
-extern void destroyiconicon(Icon *);
+extern void adjusticon(Icon *);
 extern void cleanupicons();
 extern void createdefaulticons();
-extern void adjusticon(Icon *);
-extern void selecticon(Icon *);
+extern void createicon(Client *);
+extern void createiconicon(Icon *i, XWMHints *);
+extern void deiconify(Icon *);
+extern void deselect_all_icons(struct _Scrn *);
 extern void deselecticon(Icon *);
+extern void destroyiconicon(Icon *);
 extern void free_icon_pms(struct IconPixmaps *pms);
 extern void iconify(Client *);
-extern void deiconify(Icon *);
+extern void redrawicon(Icon *, Window);
+extern void reparenticon(Icon *, struct _Scrn *, int, int);
+extern void rmicon(Icon *);
+extern void select_all_icons(struct _Scrn *i);
+extern void selecticon(Icon *);
 
 #endif

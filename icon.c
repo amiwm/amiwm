@@ -22,8 +22,6 @@ extern Display *dpy;
 extern char *progname;
 extern XContext icon_context, client_context, screen_context;
 
-extern void init_iconpalette();
-
 #ifdef USE_FONTSETS
 XFontSet labelfontset;
 int labelfont_ascent;
