@@ -511,51 +511,6 @@ void redrawclient(Client *c)
     redraw(c, c->resize);
 }
 
-extern Client *clickclient;
-extern Window clickwindow;
-extern Scrn *mbdclick, *mbdscr;
-
-void clickenter()
-{
-  if((scr=mbdscr)&& clickwindow == scr->menubardepth) {
-    mbdclick = scr;
-    redrawmenubar(scr, scr->menubardepth);
-  } else {
-    scr = clickclient->scr;
-    redraw(clickclient, clickclient->clicked=clickwindow);
-  }
-}
-
-void clickleave()
-{
-  if((scr=mbdscr)&& clickwindow == scr->menubardepth) {
-    mbdclick = NULL;
-    redrawmenubar(scr, scr->menubardepth);
-  } else {
-    scr = clickclient->scr;
-    clickclient->clicked=None;
-    redraw(clickclient, clickwindow);
-  }
-}
-
-void gadgetclicked(Client *c, Window w, XEvent *e)
-{
-  scr=c->scr;
-  redraw(c, clickwindow=(clickclient=c)->clicked=w);
-}
-
-void gadgetaborted(Client *c)
-{
-  Window w;
-  scr=c->scr;
-  if((w=c->clicked)) {
-    c->clicked=None;
-    redraw(c, w);
-  }
-  clickwindow=None;
-  clickclient=NULL;
-}
-
 static Client *topmostmappedclient(Window *children, unsigned int nchildren)
 {
   int n;
@@ -726,37 +681,93 @@ raisebottommostclient(Scrn *scr)
 		XFree(children);
 }
 
+extern void get_drag_event(XEvent *event);
 
-void gadgetunclicked(Client *c, XEvent *e)
+static Bool is_inside(int x0, int y0, int w, int h, int x, int y)
 {
-  extern void adjusticon(Icon *);
-  Window w;
-  scr=c->scr;
-  if((w=c->clicked)) {
-    c->clicked=None;
-    redraw(c, w);
-    if(w==c->close) {
-      if((c->proto & Pdelete)&&!(e->xbutton.state&ShiftMask))
-	sendcmessage(c->window, ATOMS[WM_PROTOCOLS], ATOMS[WM_DELETE_WINDOW]);
-      else
-	XKillClient(dpy, c->window);
-    } else if(w==c->depth)
-      raiselowerclient(c, -1);
-    else if(w==c->zoom) {
-      XWindowAttributes xwa;
-      XGetWindowAttributes(dpy, c->parent, &xwa);
-      XMoveWindow(dpy, c->parent, c->x=c->zoomx, c->y=c->zoomy);
-      resizeclientwindow(c, c->zoomw+c->framewidth, c->zoomh+c->frameheight);
-      c->zoomx=xwa.x;
-      c->zoomy=xwa.y;
-      c->zoomw=xwa.width-c->framewidth;
-      c->zoomh=xwa.height-c->frameheight;
-/*      XWarpPointer(dpy, None, c->zoom, 0, 0, 0, 0, 23/2, scr->h5);  */
-      sendconfig(c);
-    } else if(w==c->iconify) {
-      iconify(c);
+  if (w == 0 || h == 0)
+    return True;  /* caller do not care about where click got released */
+  return x >= x0 && y >= y0 && x < x0 + w && y < y0 + h;
+}
+
+enum click {
+  CLICK_OUT = 0,        /* click failed or released outside button */
+  CLICK_IN  = 1,        /* click released inside button */
+  CLICK_ALT = 2,        /* click released inside button, while Shift pressed */
+};
+
+/* check if Button1 is pressed AND released with cursor inside window */
+static enum click got_clicked(Client *c, Window w, Cursor curs, Time time)
+{
+  XWindowAttributes xwa;
+  int status;
+
+  XSync(dpy, False);
+  if (!XGetWindowAttributes(dpy, w, &xwa))
+    return CLICK_OUT;
+  status = XGrabPointer(dpy, w, True, ButtonPressMask|ButtonReleaseMask,
+                        GrabModeAsync, GrabModeAsync, False, curs, time);
+  if (status != AlreadyGrabbed && status != GrabSuccess)
+    return CLICK_OUT;
+  c->clicked = w;
+  redraw(c, w);
+  for (;;) {
+    XEvent event;
+
+    get_drag_event(&event);
+    if (event.type == ButtonRelease || event.type == ButtonPress) {
+      c->clicked = None;
+      redraw(c, w);
+      XUngrabPointer(dpy, event.xbutton.time);
+      if (event.type == ButtonPress)
+        return CLICK_OUT;
+      if (event.xbutton.button != Button1)
+        return CLICK_OUT;
+      if (!is_inside(0, 0, xwa.width, xwa.height, event.xbutton.x, event.xbutton.y))
+        return CLICK_OUT;
+      if (event.xbutton.button & ShiftMask)
+        return CLICK_ALT;
+      return CLICK_IN;
     }
   }
-  clickwindow=None;
-  clickclient=NULL;
+}
+
+void click_close(Client *c, Time time)
+{
+  enum click click = got_clicked(c, c->close, None, time);
+  if (click == CLICK_OUT)
+    return;
+  else if ((c->proto & Pdelete) && click != CLICK_ALT)
+    sendcmessage(c->window, ATOMS[WM_PROTOCOLS], ATOMS[WM_DELETE_WINDOW]);
+  else
+    XKillClient(dpy, c->window);
+}
+
+void click_depth(Client *c, Time time)
+{
+  if (got_clicked(c, c->depth, None, time)) {
+    raiselowerclient(c, -1);
+  }
+}
+
+void click_zoom(Client *c, Time time)
+{
+  if (got_clicked(c, c->zoom, None, time)) {
+    XWindowAttributes xwa;
+    XGetWindowAttributes(dpy, c->parent, &xwa);
+    XMoveWindow(dpy, c->parent, c->x=c->zoomx, c->y=c->zoomy);
+    resizeclientwindow(c, c->zoomw+c->framewidth, c->zoomh+c->frameheight);
+    c->zoomx=xwa.x;
+    c->zoomy=xwa.y;
+    c->zoomw=xwa.width-c->framewidth;
+    c->zoomh=xwa.height-c->frameheight;
+    sendconfig(c);
+  }
+}
+
+void click_iconify(Client *c, Time time)
+{
+  if (got_clicked(c, c->iconify, None, time)) {
+    iconify(c);
+  }
 }

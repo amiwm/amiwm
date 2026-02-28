@@ -50,7 +50,7 @@ extern void setfocus(Window);
 extern void flushmodules();
 extern void wberror(Scrn *, char *);
 
-Scrn *mbdclick=NULL, *mbdscr=NULL;
+Scrn *mbdclick=NULL;
 
 static struct ToolItem {
   struct ToolItem *next;
@@ -594,7 +594,7 @@ void redrawmenubar(Scrn *scr, Window w)
     }
   } else if(w==scr->menubardepth) {
     /* Menubar depth widget */
-    if(!mbdclick) {
+    if(mbdclick != scr) {
       XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[SHADOWPEN]);
       XDrawRectangle(dpy, w, scr->menubargc, 4, scr->h2, 10, scr->h6-scr->h2);
     }
@@ -602,12 +602,12 @@ void redrawmenubar(Scrn *scr, Window w)
     XFillRectangle(dpy, w, scr->menubargc, 8, scr->h4, 10, scr->h8-scr->h4);
     XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[SHADOWPEN]);
     XDrawRectangle(dpy, w, scr->menubargc, 8, scr->h4, 10, scr->h8-scr->h4);
-    if(mbdclick)
+    if(mbdclick == scr)
       XDrawRectangle(dpy, w, scr->menubargc, 4, scr->h2, 10, scr->h6-scr->h2);
-    XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[mbdclick?SHADOWPEN:SHINEPEN]);
+    XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[mbdclick==scr?SHADOWPEN:SHINEPEN]);
     XDrawLine(dpy, w, scr->menubargc, 0, 0, 22, 0);
     XDrawLine(dpy, w, scr->menubargc, 0, 0, 0, scr->bh-2);
-    XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[mbdclick?SHINEPEN:SHADOWPEN]);
+    XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[mbdclick==scr?SHINEPEN:SHADOWPEN]);
     XDrawLine(dpy, w, scr->menubargc, 0, scr->bh-1, 22, scr->bh-1);
     XDrawLine(dpy, w, scr->menubargc, 22, 0, 22, scr->bh-1);
   } else {
@@ -642,6 +642,8 @@ void redrawmenubar(Scrn *scr, Window w)
 
 static void leave_item(struct Item *i, Window w)
 {
+  if (i == NULL)
+    return;
   if(i==activesubitem)
     activesubitem=NULL;
   if(i==activeitem) {
@@ -708,7 +710,7 @@ static void enter_menu(struct Menu *m, Window w)
   }
 }
 
-void menubar_enter(Window w)
+static void menubar_enter(Window w)
 {
   struct Menu *m;
   struct Item *i;
@@ -732,30 +734,12 @@ void menubar_enter(Window w)
       }
 }
 
-void menubar_leave(Window w)
+static void menubar_leave(Window w)
 {
   if(activesubitem && activesubitem->win==w)
     leave_item(activesubitem, w);
   if(activeitem && activeitem->win==w)
     leave_item(activeitem, w);
-}
-
-void menu_on()
-{
-  Window r, c;
-  int rx, ry, x, y;
-  unsigned int m;
-
-  if(scr->menubarparent) {
-    XMapRaised(dpy, scr->menubarparent);
-    XRaiseWindow(dpy, scr->menubar);
-    XGrabPointer(dpy, scr->back, True, ButtonPressMask|ButtonReleaseMask|
-		EnterWindowMask|LeaveWindowMask, GrabModeAsync, GrabModeAsync,
-		scr->back, wm_curs, CurrentTime);
-    XSetInputFocus(dpy, scr->menubar, RevertToParent, CurrentTime);
-    if(XQueryPointer(dpy, scr->menubarparent, &r, &c, &rx, &ry, &x, &y, &m))
-      menubar_enter(c);
-  }
 }
 
 void menuaction(struct Item *i, struct Item *si)
@@ -887,57 +871,6 @@ void menuaction(struct Item *i, struct Item *si)
   }
 }
 
-void menu_off()
-{
-  struct Menu *oa;
-  struct Item *oi, *osi;
-
-  if(scr->menubarparent) {
-    Window r,p,*children;
-    unsigned int nchildren;
-    XUngrabPointer(dpy, CurrentTime);
-    setfocus((activeclient && activeclient->state==NormalState?
-	      activeclient->window:None));
-    XUnmapWindow(dpy, scr->menubarparent);
-    if(XQueryTree(dpy, scr->back, &r, &p, &children, &nchildren)) {
-      int n;
-      Client *c2;
-      for(n=0; n<nchildren; n++)
-	if((!XFindContext(dpy, children[n], client_context, (XPointer*)&c2)) &&
-	   children[n]==c2->parent)
-	  break;
-      if(n<nchildren) {
-	Window ws[2];
-	ws[0]=children[n];
-	ws[1]=scr->menubar;
-	XRestackWindows(dpy, ws, 2);
-      }
-      if(children) XFree(children);
-    }
-  }
-  if((osi=activesubitem))
-    leave_item(osi, osi->win);
-  if((oi=activeitem))
-    leave_item(oi, oi->win);
-  if((oa=activesubmenu)) {
-    activesubmenu=NULL;
-    if(oa->parent)
-      XUnmapWindow(dpy, oa->parent);
-  }
-  if((oa=activemenu)) {
-    activemenu=NULL;
-    if(oa->parent)
-      XUnmapWindow(dpy, oa->parent);
-    XSetWindowBackground(dpy, oa->win, scr->dri.dri_Pens[BARBLOCKPEN]);
-    XClearWindow(dpy, oa->win);
-    redraw_menu(oa, oa->win);
-  }
-  if(oi) {
-    XSync(dpy, False);
-    menuaction(oi, osi);
-  }
-}
-
 struct Item *getitembyhotkey(KeySym key)
 {
   struct Menu *m;
@@ -1022,4 +955,62 @@ struct Item *own_items(struct module *m, Scrn *s,
   if(endlink)
     endlink->next = c;
   return chain;
+}
+
+void drag_menu(Scrn *s)
+{
+  extern void get_drag_event(XEvent *event);
+  Window w;
+  struct Item *saved_item = NULL;
+  struct Item *saved_subitem = NULL;
+
+  if (s->menubarparent == None)
+    return;
+  XMapRaised(dpy, s->menubarparent);
+  XRaiseWindow(dpy, s->menubar);
+  XGrabPointer(dpy, s->back, True, ButtonPressMask|ButtonReleaseMask|
+              EnterWindowMask|LeaveWindowMask, GrabModeAsync, GrabModeAsync,
+              s->back, wm_curs, CurrentTime);
+  if(XQueryPointer(dpy, s->menubarparent, &(Window){0}, &w,
+                   &(int){0}, &(int){0}, &(int){0}, &(int){0}, &(unsigned){0}))
+    menubar_enter(w);
+  for (;;) {
+    XEvent event;
+
+    get_drag_event(&event);
+    if (event.type == ButtonRelease && event.xbutton.button == Button3) {
+      XUngrabPointer(dpy, event.xbutton.time);
+      break;
+    } else if (event.type == EnterNotify) {
+      menubar_enter(event.xcrossing.window);
+    } else if (event.type == LeaveNotify) {
+      menubar_leave(event.xcrossing.window);
+    }
+  }
+  XUnmapWindow(dpy, s->menubarparent);
+  saved_item = activeitem;
+  saved_subitem = activesubitem;
+  if(activesubitem != NULL)
+    leave_item(activesubitem, activesubitem->win);
+  if(activeitem != NULL)
+    leave_item(activeitem, activeitem->win);
+  if(activesubmenu != NULL) {
+    if(activesubmenu->parent)
+      XUnmapWindow(dpy, activesubmenu->parent);
+    activesubmenu=NULL;
+  }
+  if(activemenu != NULL) {
+    struct Menu *saved_menu = activemenu;
+    activemenu=NULL;
+    if(saved_menu->parent)
+      XUnmapWindow(dpy, saved_menu->parent);
+    XSetWindowBackground(dpy, saved_menu->win, s->dri.dri_Pens[BARBLOCKPEN]);
+    XClearWindow(dpy, saved_menu->win);
+    redraw_menu(saved_menu, saved_menu->win);
+  }
+  if(saved_item != NULL) {
+    XSync(dpy, False);
+    menuaction(saved_item, saved_subitem);
+  }
+  XLowerWindow(dpy, s->menubar);
 }
