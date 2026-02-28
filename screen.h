@@ -46,7 +46,6 @@ extern void closescreen();
 extern Scrn * openscreen(char *, Window);
 extern void realizescreens();
 extern void screentoback();
-extern void click_screendepth(Scrn *s, Time time);
 
 void closescreen();
 Scrn *openscreen(char *deftitle, Window root);

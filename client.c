@@ -19,6 +19,7 @@ extern struct Library *XLibBase;
 extern Display *dpy;
 extern XContext client_context, screen_context;
 extern Client *activeclient;
+extern Scrn *menuactive;
 extern void setfocus(Window);
 
 Client *clients=NULL;
@@ -321,6 +322,8 @@ void rmclient(Client *c)
       closescreen();
     scr = c->scr;
     if(c->active) {
+      if(!menuactive)
+	setfocus(None);
       c->active=False;
       activeclient = NULL;
       XInstallColormap(dpy, scr->cmap);

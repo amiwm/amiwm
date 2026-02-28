@@ -72,7 +72,9 @@ typedef struct _DragIcon {
 } DragIcon;
 
 Display *dpy = NULL;
-Client *activeclient=NULL;
+Client *activeclient=NULL, *clickclient=NULL;
+Window clickwindow=None;
+Scrn *menuactive=NULL;
 Bool shape_extn=False;
 char *x_server=NULL;
 char *free_screentitle=NULL;
@@ -95,19 +97,24 @@ static unsigned int meta_mask, switch_mask;
 
 static char **main_argv;
 
+extern Scrn *mbdclick, *mbdscr;
+
 extern void reparent(Client *);
 extern void redraw(Client *, Window);
 extern void redrawclient(Client *);
 extern void redrawmenubar(Scrn *, Window);
 extern void resizeclientwindow(Client *c, int, int);
-extern void click_close(Client *c, Time time);
-extern void click_iconify(Client *c, Time time);
-extern void click_zoom(Client *c, Time time);
-extern void click_depth(Client *c, Time time);
-extern void drag_menu(Scrn *s);
+extern void gadgetclicked(Client *c, Window w, XEvent *e);
+extern void gadgetunclicked(Client *c, XEvent *e);
+extern void gadgetaborted(Client *c);
+extern void clickenter(void);
+extern void clickleave(void);
+extern void menu_on(void);
+extern void menu_off(void);
 extern void menubar_enter(Window);
 extern void menubar_leave(Window);
 extern void *getitembyhotkey(KeySym);
+extern void menuaction(void *);
 extern Scrn *getscreenbyroot(Window);
 extern void assimilate(Window, int, int);
 extern void deselect_all_icons(Scrn *);
@@ -374,10 +381,9 @@ static Bool grab_for_motion(Window w, Window confine, Cursor curs, Time time, in
   return False;
 }
 
-void get_drag_event(XEvent *event)
+static void get_drag_event(XEvent *event)
 {
-  static const unsigned int DRAG_MASK =
-    ButtonPressMask|ButtonReleaseMask|PointerMotionMask|EnterWindowMask|LeaveWindowMask;
+  static const unsigned int DRAG_MASK = ButtonPressMask|ButtonReleaseMask|Button1MotionMask;
 
   for (;;) {
     fd_set rfds = master_fd_set;
@@ -1182,6 +1188,8 @@ int main(int argc, char *argv[])
 	    XGrabButton(dpy, Button1, AnyModifier, c->parent, True,
 			ButtonPressMask, GrabModeSync, GrabModeAsync,
 			None, wm_curs);
+	  if(!menuactive)
+	    setfocus(None);
 	}
 	if(c && (event.xunmap.window==c->window)) {
 	  if((!c->reparenting) && c->parent != c->scr->root) {
@@ -1357,7 +1365,12 @@ int main(int argc, char *argv[])
 	}
 	break;
       case EnterNotify:
-	if(c) {
+	if(menuactive) {
+	  scr=menuactive;
+	  menubar_enter(event.xcrossing.window);
+	} else if(clickwindow && event.xcrossing.window == clickwindow)
+	  clickenter();
+	else if(c) {
 	  if((!c->active) && (c->state==NormalState) &&
 	     prefs.focus!=FOC_CLICKTOTYPE) {
 	    if(activeclient) {
@@ -1376,10 +1389,17 @@ int main(int argc, char *argv[])
 	}
 	break;
       case LeaveNotify:
-	if(c) {
+	if(menuactive) {
+	  scr=menuactive;
+	  menubar_leave(event.xcrossing.window);
+	} else if(clickwindow && event.xcrossing.window == clickwindow)
+	  clickleave();
+	else if(c) {
 	  if(c->active && event.xcrossing.window==c->parent &&
 	     event.xcrossing.detail!=NotifyInferior &&
 	     prefs.focus == FOC_FOLLOWMOUSE) {
+	    if(!menuactive)
+	      setfocus(None);
 	    c->active=False;
 	    activeclient = NULL;
 	    instcmap(None);
@@ -1391,7 +1411,7 @@ int main(int argc, char *argv[])
 	}
 	break;
       case ButtonPress:
-	if(event.xbutton.button==Button1) {
+	if(clickwindow==None && event.xbutton.button==Button1 && !menuactive) {
 	  if(c) {
 	    if((!c->active) && prefs.focus==FOC_CLICKTOTYPE &&
 	       (c->state==NormalState)) {
@@ -1429,15 +1449,8 @@ int main(int argc, char *argv[])
 	    else if(event.xbutton.window==c->window ||
 		    event.xbutton.window==c->parent)
 	      ;
-	    else if (event.xbutton.window == c->close) {
-              click_close(c, event.xbutton.time);
-	    } else if (event.xbutton.window == c->iconify) {
-              click_iconify(c, event.xbutton.time);
-	    } else if (event.xbutton.window == c->depth) {
-              click_depth(c, event.xbutton.time);
-	    } else if (event.xbutton.window == c->zoom) {
-              click_zoom(c, event.xbutton.time);
-            }
+	    else
+	      gadgetclicked(c, event.xbutton.window, &event);
 	  } else if(i && event.xbutton.window==i->window) {
 	    abortfocus();
 	    if(i->selected && (event.xbutton.time-last_icon_click)<dblClickTime) {
@@ -1450,7 +1463,9 @@ int main(int argc, char *argv[])
               drag_icon(i->scr, event.xbutton.time, event.xbutton.x_root, event.xbutton.y_root);
 	    }
 	  } else if(scr&&event.xbutton.window==scr->menubardepth) {
-	    click_screendepth(scr, event.xbutton.time);
+	    clickwindow=scr->menubardepth;
+	    mbdclick=mbdscr=scr;
+	    redrawmenubar(scr, scr->menubardepth);
 	  } else if(scr&&event.xbutton.window==scr->menubar &&
 		    scr->back!=scr->root) {
 	    drag_screen(scr, event.xbutton.time, event.xbutton.x_root, event.xbutton.y_root);
@@ -1461,17 +1476,39 @@ int main(int argc, char *argv[])
                           event.xbutton.x, event.xbutton.y);
 	  } else ;
 	} else if(event.xbutton.button==3) {
-	  if(c == NULL && scr != NULL) {
-	    drag_menu(scr);
+	  if(scr&&(scr==mbdscr)&&clickwindow==scr->menubardepth) {
+	    mbdclick=NULL;
+	    clickwindow=None;
+	    redrawmenubar(scr, scr->menubardepth);
+	  } else if(clickclient) {
+	    gadgetaborted(clickclient);
+	  } else if(scr&&!menuactive) {
+	    menu_on();
+	    menuactive=scr;
 	  }
 	}
-	if(prefs.focus == FOC_CLICKTOTYPE) {
+	if(prefs.focus == FOC_CLICKTOTYPE && !menuactive) {
 	  XSync(dpy,0);
 	  XAllowEvents(dpy,ReplayPointer,CurrentTime);
 	  XSync(dpy,0);
 	}
 	break;
       case ButtonRelease:
+	if(event.xbutton.button==Button1) {
+	  if(clickclient)
+	    gadgetunclicked(clickclient, &event);
+	  else if((scr=mbdscr)&& clickwindow==scr->menubardepth) {
+	    if(mbdclick) {
+	      mbdclick=NULL;
+	      redrawmenubar(scr, scr->menubardepth);
+	      screentoback();
+	    }
+	    clickwindow=None;
+	  }
+	} else if(event.xbutton.button==Button3 && (scr=menuactive)) {
+	  menu_off();
+	  menuactive=NULL;
+	}
 	break;
       case MotionNotify:
 	break;
