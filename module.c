@@ -25,7 +25,10 @@
 #include "alloc.h"
 #include "client.h"
 #include "drawinfo.h"
+#include "events.h"
+#include "frame.h"
 #include "icon.h"
+#include "menu.h"
 #include "module.h"
 #include "prefs.h"
 #include "screen.h"
@@ -36,22 +39,11 @@ extern XContext client_context, icon_context, screen_context;
 extern FILE *rcfile;
 extern Display *dpy;
 
-extern void add_fd_to_set(int);
-extern void remove_fd_from_set(int);
-
-extern void raiselowerclient(Client *, int);
-extern void wberror(Scrn *, char *);
-
-extern Icon *createappicon(struct module *, Window, char *,
-			   Pixmap, Pixmap, Pixmap, int, int);
-
-extern struct Item *own_items(struct module *, Scrn *,
-			       int, int, int, struct Item *);
-extern void disown_item_chain(struct module *, struct Item *);
-
+char *free_screentitle=NULL;
 struct module *modules = NULL;
-
 struct mcmd_keygrab *keygrabs = NULL;
+
+static unsigned int meta_mask, switch_mask;
 
 static struct mcmd_keygrab *find_keygrab(int keycode, unsigned int modifiers)
 {
@@ -165,6 +157,41 @@ void reap_children(int sig)
     signal(sig, reap_children);
 }
 
+static void lookup_keysyms(Display *dpy, unsigned int *meta_mask,
+    unsigned int *switch_mask)
+{
+  int i,j,k,maxsym,mincode,maxcode;
+  XModifierKeymap *map=XGetModifierMapping(dpy);
+  KeySym *kp, *kmap;
+  unsigned int alt_mask = 0;
+  *meta_mask=0, *switch_mask=0;
+  XDisplayKeycodes(dpy, &mincode, &maxcode);
+  kmap=XGetKeyboardMapping(dpy, mincode, maxcode-mincode+1, &maxsym);
+  for(i=3; i<8; i++)
+    for(j=0; j<map->max_keypermod; j++)
+      if(map->modifiermap[i*map->max_keypermod+j] >= mincode)
+	for(kp=kmap+(map->modifiermap[i*map->max_keypermod+j]-mincode)*maxsym,
+	      k=0; k<maxsym; k++)
+	  switch(*kp++) {
+	  case XK_Meta_L:
+	  case XK_Meta_R:
+	    *meta_mask|=1<<i;
+	    break;
+	  case XK_Mode_switch:
+	    *switch_mask|=1<<i;
+	    break;
+	  case XK_Alt_L:
+	  case XK_Alt_R:
+	    alt_mask|=1<<i;
+	    break;
+	  }
+  XFree(kmap);
+  XFreeModifiermap(map);
+  if(*meta_mask == 0)
+    *meta_mask = (alt_mask? alt_mask :
+		 (*switch_mask? *switch_mask : Mod1Mask));
+}
+
 void init_modules()
 {
   modules = NULL;
@@ -175,6 +202,7 @@ void init_modules()
   signal(SIGCLD, reap_children);
 #endif
 #endif
+  lookup_keysyms(dpy, &meta_mask, &switch_mask);
 }
 
 void create_module(Scrn *screen, char *module_name, char *module_arg)
@@ -316,6 +344,39 @@ int dispatch_event_to_broker(XEvent *e, unsigned long mask, struct module *m)
   return 0;
 }
 
+void internal_broker(XEvent *e)
+{
+
+  /*
+   * XXX this is one of the things that the code in module.c
+   * is abusing to overload display with some numeric
+   * values.  Surely there's a better way to do this?
+   */
+  uintptr_t event_loc=(uintptr_t)e->xany.display;
+
+  e->xany.display=dpy;
+  if(event_loc==1) {
+    XSendEvent(dpy, e->xany.window, False, 0, e);
+  } else switch(e->type) {
+  case MappingNotify:
+    if(e->xmapping.request==MappingKeyboard ||
+       e->xmapping.request==MappingModifier)
+      XRefreshKeyboardMapping(&e->xmapping);
+    lookup_keysyms(dpy, &meta_mask, &switch_mask);
+    break;
+  case KeyPress:
+    if(e->xkey.state & meta_mask) {
+      KeySym ks=XLookupKeysym(&e->xkey,
+			      ((e->xkey.state & ShiftMask)?1:0)+
+			      ((e->xkey.state & switch_mask)?2:0));
+      void *item;
+      if((item=getitembyhotkey(ks)))
+	menuaction(item, NULL);
+    }
+    break;
+  }
+}
+
 static void incoming_event(struct module *m, struct mcmd_event *me)
 {
   extern void internal_broker(XEvent *);
@@ -437,7 +498,6 @@ static void handle_module_cmd(struct module *m, char *data, int data_len)
     break;
   case MCMD_ERRORMSG:
     if(data_len>0) {
-      extern char *free_screentitle;
       if(free_screentitle) free(free_screentitle);
       free_screentitle=malloc(data_len+1);
       if(free_screentitle==NULL)

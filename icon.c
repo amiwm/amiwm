@@ -7,6 +7,7 @@
 #include "screen.h"
 #include "icon.h"
 #include "client.h"
+#include "diskobject.h"
 #include "prefs.h"
 #include "icc.h"
 #include "style.h"

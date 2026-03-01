@@ -30,6 +30,7 @@ struct IconPixmaps
 
 extern void adjusticon(Icon *);
 extern void cleanupicons();
+extern Icon *createappicon(struct module *, Window, char *, Pixmap, Pixmap, Pixmap, int, int);
 extern void createdefaulticons();
 extern void createicon(Client *);
 extern void createiconicon(Icon *i, XWMHints *);

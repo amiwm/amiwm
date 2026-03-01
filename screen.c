@@ -2,12 +2,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "drawinfo.h"
-#include "screen.h"
-#include "icon.h"
 #include "client.h"
-#include "prefs.h"
+#include "drawinfo.h"
+#include "events.h"
 #include "icc.h"
+#include "icon.h"
+#include "menu.h"
+#include "prefs.h"
+#include "screen.h"
 
 extern Display *dpy;
 extern Cursor wm_curs;
@@ -421,8 +423,6 @@ Scrn *getscreenbyroot(Window w)
 
 void click_screendepth(Scrn *s, Time time)
 {
-  extern void redrawmenubar(Scrn *, Window);
-  extern void get_drag_event(XEvent *event);
   extern Scrn *mbdclick;
   int status;
 
@@ -436,7 +436,7 @@ void click_screendepth(Scrn *s, Time time)
   for (;;) {
     XEvent event;
 
-    get_drag_event(&event);
+    event = get_drag_event();
     if (event.type == ButtonRelease || event.type == ButtonPress) {
       mbdclick = NULL;
       redrawmenubar(s, s->menubardepth);

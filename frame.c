@@ -11,6 +11,7 @@
 #include "drawinfo.h"
 #include "screen.h"
 #include "menu.h"
+#include "events.h"
 #include "frame.h"
 #include "icon.h"
 #include "client.h"
@@ -682,8 +683,6 @@ raisebottommostclient(Scrn *scr)
 		XFree(children);
 }
 
-extern void get_drag_event(XEvent *event);
-
 static Bool is_inside(int x0, int y0, int w, int h, int x, int y)
 {
   if (w == 0 || h == 0)
@@ -715,7 +714,7 @@ static enum click got_clicked(Client *c, Window w, Cursor curs, Time time)
   for (;;) {
     XEvent event;
 
-    get_drag_event(&event);
+    event = get_drag_event();
     if (event.type == ButtonRelease || event.type == ButtonPress) {
       c->clicked = None;
       redraw(c, w);
