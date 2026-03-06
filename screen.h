@@ -2,6 +2,7 @@
 #define SCREEN_H
 
 #include "icon.h"
+#include "drawinfo.h"
 
 /*
  * Struct _Scrn - virtual desktop screen
@@ -39,17 +40,15 @@ typedef struct _Scrn {
 
 extern Scrn *scr;
 
-Scrn * get_front_scr(void);
-void set_front_scr(Scrn *s);
-
-extern void closescreen();
-extern Scrn * openscreen(char *, Window);
-extern void realizescreens();
-extern void screentoback();
-
-void closescreen();
-Scrn *openscreen(char *deftitle, Window root);
-void realizescreens();
-void screentoback();
+extern Scrn *get_front_scr(void);
+extern Scrn *getscreenbyroot(Window);
+extern Scrn *openscreen(char *, Window);
+extern Scrn *openscreen(char *deftitle, Window root);
+extern void assimilate(Window, int, int);
+extern void click_screendepth(Scrn *s, Time time);
+extern void closescreen(void);
+extern void realizescreens(void);
+extern void screentoback(void);
+extern void set_front_scr(Scrn *s);
 
 #endif

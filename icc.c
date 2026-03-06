@@ -1,11 +1,12 @@
 #include <X11/Xatom.h>
 
 #include "drawinfo.h"
-#include "screen.h"
+#include "frame.h"
 #include "icc.h"
 #include "icon.h"
-#include "style.h"
 #include "prefs.h"
+#include "screen.h"
+#include "style.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -15,8 +16,6 @@
 #include <pragmas/xlib_pragmas.h>
 extern struct Library *XLibBase;
 #endif
-
-extern void redraw(Client *, Window);
 
 Atom ATOMS[NATOMS];
 

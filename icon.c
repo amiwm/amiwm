@@ -7,6 +7,7 @@
 #include "screen.h"
 #include "icon.h"
 #include "client.h"
+#include "diskobject.h"
 #include "prefs.h"
 #include "icc.h"
 #include "style.h"
@@ -21,8 +22,6 @@ extern struct Library *XLibBase;
 extern Display *dpy;
 extern char *progname;
 extern XContext icon_context, client_context, screen_context;
-
-extern void init_iconpalette();
 
 #ifdef USE_FONTSETS
 XFontSet labelfontset;

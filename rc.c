@@ -4,11 +4,12 @@
 #include <X11/Xmu/CharSet.h>
 
 #include "alloc.h"
-#include "prefs.h"
 #include "drawinfo.h"
-#include "screen.h"
 #include "gram.tab.h"
 #include "icc.h"
+#include "prefs.h"
+#include "rc.h"
+#include "screen.h"
 #include "style.h"
 
 #ifdef AMIGAOS

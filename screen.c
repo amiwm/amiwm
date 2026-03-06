@@ -2,12 +2,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "drawinfo.h"
-#include "screen.h"
-#include "icon.h"
 #include "client.h"
-#include "prefs.h"
+#include "drawinfo.h"
+#include "events.h"
 #include "icc.h"
+#include "icon.h"
+#include "menu.h"
+#include "prefs.h"
+#include "screen.h"
 
 extern Display *dpy;
 extern Cursor wm_curs;
@@ -417,4 +419,37 @@ Scrn *getscreenbyrootext(Window w, int include_fs)
 Scrn *getscreenbyroot(Window w)
 {
   return getscreenbyrootext(w, 0);
+}
+
+void click_screendepth(Scrn *s, Time time)
+{
+  extern Scrn *mbdclick;
+  int status;
+
+  XSync(dpy, False);
+  status = XGrabPointer(dpy, s->menubardepth, True, ButtonPressMask|ButtonReleaseMask,
+                        GrabModeAsync, GrabModeAsync, False, None, time);
+  if (status != AlreadyGrabbed && status != GrabSuccess)
+    return;
+  mbdclick = s;
+  redrawmenubar(s, s->menubardepth);
+  for (;;) {
+    XEvent event;
+
+    event = get_drag_event();
+    if (event.type == ButtonRelease || event.type == ButtonPress) {
+      mbdclick = NULL;
+      redrawmenubar(s, s->menubardepth);
+      XUngrabPointer(dpy, event.xbutton.time);
+      if (event.type == ButtonPress)
+        return;
+      if (event.xbutton.x < 0 || event.xbutton.y < 0)
+        return;   /* pointer to left/top of button */
+      if (event.xbutton.x >= 23 || event.xbutton.y >= s->bh)
+        return;   /* pointer to right/bottom of button */
+      if(event.xbutton.window == s->menubardepth)
+        screentoback();
+      return;
+    }
+  }
 }
