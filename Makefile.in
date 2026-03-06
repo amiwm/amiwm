@@ -29,7 +29,7 @@ MODULES = Background Keyboard Background_resize Background_stretch \
 
 OBJS  = main.o screen.o client.o frame.o icc.o \
 		icon.o menu.o diskobject.o gram.tab.o lex.o rc.o \
-		module.o
+		module.o events.o
 
 SRCS = main.c screen.c client.c frame.c icc.c \
 		icon.c menu.c diskobject.c gram.tab.c lex.c rc.c \

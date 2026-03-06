@@ -9,9 +9,11 @@
 
 #include "alloc.h"
 #include "drawinfo.h"
+#include "events.h"
 #include "prefs.h"
 #include "screen.h"
 #include "menu.h"
+#include "module.h"
 #include "client.h"
 #include "icon.h"
 #include "version.h"
@@ -955,9 +957,8 @@ struct Item *own_items(struct module *m, Scrn *s,
   return chain;
 }
 
-void drag_menu(Scrn *s)
+void drag_menu(Scrn *s, Time time)
 {
-  extern void get_drag_event(XEvent *event);
   Window w;
   struct Item *saved_item = NULL;
   struct Item *saved_subitem = NULL;
@@ -968,16 +969,18 @@ void drag_menu(Scrn *s)
   XRaiseWindow(dpy, s->menubar);
   XGrabPointer(dpy, s->back, True, ButtonPressMask|ButtonReleaseMask|
               EnterWindowMask|LeaveWindowMask, GrabModeAsync, GrabModeAsync,
-              s->back, wm_curs, CurrentTime);
+              s->back, wm_curs, time);
+  XGrabKeyboard(dpy, s->menubar, True, GrabModeAsync, GrabModeAsync, time);
   if(XQueryPointer(dpy, s->menubarparent, &(Window){0}, &w,
                    &(int){0}, &(int){0}, &(int){0}, &(int){0}, &(unsigned){0}))
     menubar_enter(w);
   for (;;) {
     XEvent event;
 
-    get_drag_event(&event);
+    event = get_drag_event();
     if (event.type == ButtonRelease && event.xbutton.button == Button3) {
       XUngrabPointer(dpy, event.xbutton.time);
+      XUngrabKeyboard(dpy, event.xbutton.time);
       break;
     } else if (event.type == EnterNotify) {
       menubar_enter(event.xcrossing.window);

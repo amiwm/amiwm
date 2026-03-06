@@ -82,7 +82,10 @@ extern struct module {
   struct Item *menuitems;
 } *modules;
 
+extern char *free_screentitle;
+
 extern int dispatch_event_to_broker(XEvent *, unsigned long, struct module *);
+extern void internal_broker(XEvent *e);
 extern void flushmodules(void);
 extern void handle_module_input(fd_set *);
 extern void init_modules(void);

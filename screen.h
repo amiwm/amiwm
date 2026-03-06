@@ -2,6 +2,7 @@
 #define SCREEN_H
 
 #include "icon.h"
+#include "drawinfo.h"
 
 /*
  * Struct _Scrn - virtual desktop screen

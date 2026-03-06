@@ -48,6 +48,8 @@ enum {
 #undef  X
 };
 
+struct _Client;
+
 extern Atom ATOMS[NATOMS];
 
 extern Window get_transient_for(Window);
