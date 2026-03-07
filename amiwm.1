@@ -62,13 +62,13 @@ and then de-iconifying it.)
 .Nm
 can keep several workbench screens (or just "screens" for short)
 where windows are displayed.
-Each screen has a titlebar above it displaying its name, and a few widgets.
+Each screen has a menubar above it displaying the screen's name, and a few widgets.
 Screens are controlled with the pointer as follows:
 .Bl -column "Raise button" "Right-release" XXXX
 .It Sy Target           Ta Sy Operation  Ta Sy Description
-.It Titlebar            Ta Left-drag     Ta Move screen up/down
+.It Menubar             Ta Left-drag     Ta Move screen up/down
 to reveal/hide other screens.
-.It Titlebar            Ta Right-press   Ta Reveal the menus.
+.It Menubar             Ta Right-press   Ta Reveal the menus.
 .It Menu                Ta Right-drag    Ta Navigate through menus.
 .It Menu entry          Ta Right-release Ta Activate menu entry.
 .It Icon                Ta Double-click  Ta Launch program
@@ -98,15 +98,24 @@ Empty lines and lines beginning with
 are ignored.
 Each other line is a configuration option and its arguments.
 The options are as follows:
-.Bl -column highlighttextpen def_tool.info XXXXXX
+.Bl -column HighlightTextPen def_tool.info XXXXXX
 .It Option              Ta Default              Ta Arguments
 .It Ic AutoRaise        Ta Cm off               Ta Ar boolean
+.It Ic BackgroundPen    Ta Cm ...               Ta Qq Ar colorname
+.It Ic BarBlockPen      Ta Cm ...               Ta Qq Ar colorname
+.It Ic BarDetailPen     Ta Cm ...               Ta Qq Ar colorname
+.It Ic BarTrimPen       Ta Cm ...               Ta Qq Ar colorname
 .It Ic BatteryInfo      Ta Cm off               Ta Ar boolean
+.It Ic BlockPen         Ta Cm ...               Ta Qq Ar colorname
 .It Ic CustomIconsOnly  Ta Cm off               Ta Ar boolean
 .It Ic DefaultIcon      Ta Cm def_tool.info     Ta Qq Ar filename
+.It Ic DetailPen        Ta Cm ...               Ta Qq Ar colorname
 .It Ic FastQuit         Ta Cm off               Ta Ar boolean
+.It Ic FillPen          Ta Cm ...               Ta Qq Ar colorname
+.It Ic FillTextPen      Ta Cm ...               Ta Qq Ar colorname
 .It Ic Focus            Ta Cm followmouse       Ta Cm followmouse Ns | Ns Cm sloppy Ns | Ns Cm clicktotype
 .It Ic ForceMove        Ta Cm manual            Ta Cm manual Ns | Ns Cm auto Ns | Ns Cm always
+.It Ic HighlightTextPen Ta Cm ...               Ta Qq Ar colorname
 .It Ic IconDir          Ta ""                   Ta Qq Ar path
 .It Ic IconFont         Ta ""                   Ta Qq Ar fontname
 .It Ic IconPalette      Ta Cm system            Ta Cm system Ns | Ns Cm magicwb Ns | Ns Cm schwartz Ns | Ns Ar filename
@@ -117,26 +126,17 @@ The options are as follows:
 .It Ic OpaqueResize     Ta False                Ta Ar boolean
 .It Ic Screen           Ta ""                   Ta Oo Ar number Oc Ar screenname
 .It Ic ScreenFont       Ta ""                   Ta Qq Ar fontname
+.It Ic ShadowPen        Ta Cm ...               Ta Qq Ar colorname
+.It Ic ShinePen         Ta Cm ...               Ta Qq Ar colorname
 .It Ic ShortLabelIcons  Ta Cm off               Ta Ar boolean
 .It Ic SizeBorder       Ta Cm right             Ta Cm right Ns | Ns Cm bottom Ns | Ns Cm both Ns | Ns Cm none
+.It Ic Style            Ta ""                   Ta Cm "{" Cm class Qo Ar classname Qc Cm icon Qo Ar filename Qc Cm "}"
+.It Ic TextPen          Ta Cm ...               Ta Qq Ar colorname
 .It Ic TitleBarClock    Ta Cm ...               Ta Qq Ar boolean
 .It Ic TitleClockFormat Ta Qq "%c"              Ta Oo Ar number Oc Ar timeformat
+.It Ic ToolItem         Ta ""                   Ta Ic Separator
 .It Ic ToolItem         Ta ""                   Ta Qo Ar name Qc Cm { Ar ToolItem Ns s ... Cm }
 .It Ic ToolItem         Ta ""                   Ta Qo Ar name Qc Qo Ar command Qc Qo Ar hotkey Qc
-.It Ic ToolItem         Ta ""                   Ta Ic Separator
-.It Ic backgroundpen    Ta Cm ...               Ta Qq Ar colorname
-.It Ic barblockpen      Ta Cm ...               Ta Qq Ar colorname
-.It Ic bardetailpen     Ta Cm ...               Ta Qq Ar colorname
-.It Ic bartrimpen       Ta Cm ...               Ta Qq Ar colorname
-.It Ic blockpen         Ta Cm ...               Ta Qq Ar colorname
-.It Ic detailpen        Ta Cm ...               Ta Qq Ar colorname
-.It Ic fillpen          Ta Cm ...               Ta Qq Ar colorname
-.It Ic filltextpen      Ta Cm ...               Ta Qq Ar colorname
-.It Ic highlighttextpen Ta Cm ...               Ta Qq Ar colorname
-.It Ic shadowpen        Ta Cm ...               Ta Qq Ar colorname
-.It Ic shinepen         Ta Cm ...               Ta Qq Ar colorname
-.It Ic style            Ta ""                   Ta Cm "{" Cm class Qo Ar classname Qc Cm icon Qo Ar filename Qc Cm "}"
-.It Ic textpen          Ta Cm ...               Ta Qq Ar colorname
 .El
 .
 .Pp
@@ -147,6 +147,9 @@ each with different sets of arguments.
 Some options, like one of the forms of
 .Ic ToolItem ,
 expect as argument a block of options, one per line, around curly braces.
+.
+.Pp
+Option names are case insensitive.
 .
 .Pp
 For the arguments,
@@ -193,51 +196,54 @@ or just move a frame indicating where the window will be after releasing the mou
 .It Ic OpaqueResize Ar bool
 Whether resizing a window by dragging its resize handle should resize the window in real time;
 or just resize a frame indicating the window's final size after releasing the mouse button.
-.El
-.
-.Ss Windows decorations
-.Bl -tag -width Ds
-.It Ic ScreenFont Qq Ar fontname
-Selects a font to use for windowtitles etc.
 .
 .It Ic SizeBorder Cm right Ns | Ns Cm bottom Ns | Ns Cm both Ns | Ns Cm none
 Specifies which border should be enlarged when a sizegadget is present.
+.El
 .
-.It Ic detailpen Qq Ar colorname
-TODO.
+.Ss Color options
+.Bl -tag -width Ds
+.It Ic BackgroundPen Qq Ar colorname
+Color for the filling (background) of objects on inactive windows and on the menubar.
+(buttons, window decorations and titlebar, etc).
 .
-.It Ic blockpen Qq Ar colorname
-TODO.
+.It Ic BarBlockPen Qq Ar colorname
+Color for the menubar's filling.
 .
-.It Ic textpen Qq Ar colorname
-TODO.
+.It Ic BarDetailPen Qq Ar colorname
+Color for the screen's name on the menubar, and the menu entries' labels.
 .
-.It Ic shinepen Qq Ar colorname
-TODO.
+.It Ic BarTrimPen Qq Ar colorname
+Color for the menubar's border, and the widgets on the menubar.
 .
-.It Ic shadowpen Qq Ar colorname
-TODO.
+.It Ic DetailPen Qq Ar colorname
+Color set by libami, currently unused.
 .
-.It Ic fillpen Qq Ar colorname
-TODO.
+.It Ic BlockPen Qq Ar colorname
+Color set by libami, currently unused.
 .
-.It Ic filltextpen Qq Ar colorname
-TODO.
+.It Ic FillPen Qq Ar colorname
+Color for the filling (background) of objects on active windows
+(buttons, window decorations and titlebar, etc).
 .
-.It Ic backgroundpen Qq Ar colorname
-TODO.
+.It Ic FillTextPen Qq Ar colorname
+Color for the text (foreground) of objects on active windows
+(buttons, window decorations and titlebar, etc).
 .
-.It Ic highlighttextpen Qq Ar colorname
-TODO.
+.It Ic HighlightTextPen Qq Ar colorname
+Special color text, used on background by libami.
 .
-.It Ic bardetailpen Qq Ar colorname
-TODO.
+.It Ic ShadowPen Qq Ar colorname
+Color for the dark edge on 3D objects
+(buttons, titlebars, handles, etc; both active and inactive).
 .
-.It Ic barblockpen Qq Ar colorname
-TODO.
+.It Ic ShinePen Qq Ar colorname
+Color for the bright edge on 3D objects
+(buttons, titlebars, handles, etc; both active and inactive).
 .
-.It Ic bartrimpen Qq Ar colorname
-TODO.
+.It Ic TextPen Qq Ar colorname
+Color for the filling (background) of objects on inactive windows and on the menubar.
+(buttons, window decorations and titlebar, etc).
 .El
 .
 .Ss Icon options
@@ -308,6 +314,9 @@ strings in amiwmrc.
 .
 .Ss TitleBar and MenuBar
 .Bl -tag -width Ds
+.It Ic ScreenFont Qq Ar fontname
+Selects a font to use for windowtitles and menubar.
+.
 .It Ic BatteryInfo Ar boolean
 This lets you display battery information on the menu bar.
 It reqiures a module (such as Battery)
