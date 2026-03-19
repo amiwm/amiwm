@@ -23,12 +23,15 @@
 #include <X11/Xlib.h>
 
 #include "alloc.h"
-#include "drawinfo.h"
-#include "screen.h"
-#include "prefs.h"
-#include "module.h"
 #include "client.h"
+#include "diskobject.h"
+#include "drawinfo.h"
+#include "frame.h"
 #include "icon.h"
+#include "menu.h"
+#include "module.h"
+#include "prefs.h"
+#include "screen.h"
 #include "version.h"
 
 extern XContext client_context, icon_context, screen_context;
@@ -38,16 +41,7 @@ extern Display *dpy;
 
 extern void add_fd_to_set(int);
 extern void remove_fd_from_set(int);
-
-extern void raiselowerclient(Client *, int);
 extern void wberror(Scrn *, char *);
-
-extern Icon *createappicon(struct module *, Window, char *,
-			   Pixmap, Pixmap, Pixmap, int, int);
-
-extern struct Item *own_items(struct module *, Scrn *,
-			       int, int, int, struct Item *);
-extern void disown_item_chain(struct module *, struct Item *);
 
 struct module *modules = NULL;
 
@@ -331,13 +325,8 @@ void mod_menuselect(struct module *m, int menu, int item, int subitem)
 	  menu, item, subitem, (int)m->pid);
 }
 
-extern void lowertopmostclient(Scrn *scr);
-extern void raisebottommostclient(Scrn *scr);
-
 static void handle_module_cmd(struct module *m, char *data, int data_len)
 {
-  extern Scrn *getscreen(Window);
-  extern int iconcolormask;
   XID id=m->mcmd.id;
   Client *c;
 

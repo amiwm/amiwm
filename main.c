@@ -36,14 +36,17 @@
 #include <locale.h>
 #endif
 
-#include "drawinfo.h"
-#include "screen.h"
-#include "icon.h"
 #include "client.h"
-#include "prefs.h"
-#include "module.h"
+#include "drawinfo.h"
+#include "frame.h"
 #include "icc.h"
+#include "icon.h"
 #include "libami.h"
+#include "menu.h"
+#include "module.h"
+#include "prefs.h"
+#include "rc.h"
+#include "screen.h"
 
 #ifdef AMIGAOS
 #include <pragmas/xlib_pragmas.h>
@@ -53,13 +56,6 @@ struct timeval {
   long tv_sec;
   long tv_usec;
 };
-
-#define fd_set XTransFdset
-#undef FD_ZERO
-#undef FD_SET
-#define FD_ZERO XTransFdZero
-#define FD_SET XTransFdSet
-#define select XTransSelect
 #endif
 
 #define HYSTERESIS 5
@@ -94,39 +90,7 @@ static Window *checkwins;
 static int shape_event_base, shape_error_base;
 static int server_grabs=0;
 static unsigned int meta_mask, switch_mask;
-
 static char **main_argv;
-
-extern Scrn *mbdclick, *mbdscr;
-
-extern void reparent(Client *);
-extern void redraw(Client *, Window);
-extern void redrawclient(Client *);
-extern void redrawmenubar(Scrn *, Window);
-extern void resizeclientwindow(Client *c, int, int);
-extern void gadgetclicked(Client *c, Window w, XEvent *e);
-extern void gadgetunclicked(Client *c, XEvent *e);
-extern void gadgetaborted(Client *c);
-extern void clickenter(void);
-extern void clickleave(void);
-extern void menu_on(void);
-extern void menu_off(void);
-extern void menubar_enter(Window);
-extern void menubar_leave(Window);
-extern void *getitembyhotkey(KeySym);
-extern void menuaction(void *);
-extern Scrn *getscreenbyroot(Window);
-extern void assimilate(Window, int, int);
-extern void deselect_all_icons(Scrn *);
-extern void reparenticon(Icon *, Scrn *, int, int);
-extern void handle_client_message(Client *, XClientMessageEvent *);
-extern void handle_module_input(fd_set *);
-extern int dispatch_event_to_broker(XEvent *, unsigned long, struct module *);
-extern void reshape_frame(Client *c);
-extern void read_rc_file(char *filename, int manage_all);
-extern void init_modules();
-extern void flushmodules();
-extern void raiselowerclient(Client *, int);
 
 #ifndef AMIGAOS
 void restart_amiwm()
@@ -942,7 +906,7 @@ void internal_broker(XEvent *e)
 			      ((e->xkey.state & switch_mask)?2:0));
       void *item;
       if((item=getitembyhotkey(ks)))
-	menuaction(item);
+	menuaction(item, NULL);
     }
     break;
   }
@@ -966,7 +930,6 @@ static void update_clock(void *dontcare)
 static void cleanup()
 {
   int sc;
-  extern void free_prefs();
   struct coevent *e;
   flushmodules();
   flushclients();
@@ -1265,7 +1228,6 @@ int main(int argc, char *argv[])
 	  c = NULL;
 	if(c && event.xconfigurerequest.window==c->window &&
 	   c->parent!=c->scr->root) {
-	  extern void resizeclientwindow(Client *c, int, int);
 	  if(event.xconfigurerequest.value_mask&CWBorderWidth)
 	    c->old_bw=event.xconfigurerequest.border_width;
 	  resizeclientwindow(c, (event.xconfigurerequest.value_mask&CWWidth)?

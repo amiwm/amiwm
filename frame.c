@@ -8,14 +8,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "drawinfo.h"
-#include "screen.h"
-#include "icon.h"
 #include "client.h"
+#include "drawinfo.h"
+#include "frame.h"
 #include "icc.h"
-#include "prefs.h"
-#include "module.h"
+#include "icon.h"
 #include "libami.h"
+#include "menu.h"
+#include "module.h"
+#include "prefs.h"
+#include "screen.h"
 
 #ifdef AMIGAOS
 #include <pragmas/xlib_pragmas.h>
@@ -28,8 +30,6 @@ extern Display *dpy;
 extern XContext client_context, screen_context;
 extern Cursor wm_curs;
 extern int shape_extn;
-extern void redrawmenubar(Scrn *, Window);
-void reshape_frame(Client *c);
 
 Window creategadget(Client *c, Window p, int x, int y, int w, int h)
 {
@@ -729,7 +729,6 @@ raisebottommostclient(Scrn *scr)
 
 void gadgetunclicked(Client *c, XEvent *e)
 {
-  extern void adjusticon(Icon *);
   Window w;
   scr=c->scr;
   if((w=c->clicked)) {

@@ -4,11 +4,13 @@
 #include <X11/Xmu/CharSet.h>
 
 #include "alloc.h"
-#include "prefs.h"
 #include "drawinfo.h"
-#include "screen.h"
+#include "diskobject.h"
 #include "gram.tab.h"
 #include "icc.h"
+#include "prefs.h"
+#include "rc.h"
+#include "screen.h"
 #include "style.h"
 
 #ifdef AMIGAOS
@@ -16,7 +18,6 @@
 extern struct Library *Xmu1Base;
 #endif
 
-extern void set_sys_palette(void);
 extern int yyparse (void);
 
 struct prefs_struct prefs;

@@ -2,12 +2,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "drawinfo.h"
-#include "screen.h"
-#include "icon.h"
 #include "client.h"
-#include "prefs.h"
+#include "drawinfo.h"
+#include "frame.h"
 #include "icc.h"
+#include "icon.h"
+#include "menu.h"
+#include "prefs.h"
+#include "screen.h"
 
 extern Display *dpy;
 extern Cursor wm_curs;
@@ -19,9 +21,6 @@ extern XFontStruct *labelfont;
 #endif
 extern char *progname;
 extern XContext screen_context, client_context, vroot_context;
-
-extern void createmenubar();
-extern void reparent(Client *);
 
 static Scrn *_front = NULL;
 Scrn *scr = NULL;

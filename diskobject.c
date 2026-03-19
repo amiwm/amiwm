@@ -13,6 +13,7 @@
 
 #include "alloc.h"
 #include "drawinfo.h"
+#include "diskobject.h"
 #include "prefs.h"
 #include "screen.h"
 #include "libami.h"

@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "drawinfo.h"
+#include "diskobject.h"
 #include "screen.h"
 #include "icon.h"
 #include "client.h"
@@ -21,8 +22,6 @@ extern struct Library *XLibBase;
 extern Display *dpy;
 extern char *progname;
 extern XContext icon_context, client_context, screen_context;
-
-extern void init_iconpalette();
 
 #ifdef USE_FONTSETS
 XFontSet labelfontset;
@@ -172,7 +171,6 @@ void createdefaulticons()
   Window r;
   int x,y;
   unsigned int b,d;
-  extern void load_do(const char *, struct IconPixmaps *);
 
   init_iconpalette();
   load_do(prefs.defaulticon, &scr->default_tool_pms);
@@ -258,7 +256,6 @@ static void setstdiconicon(Icon *i, unsigned int *w, unsigned int *h)
       Window r;
       int x,y;
       unsigned int b,d;
-      extern void load_do(const char *, struct IconPixmaps *);
       load_do(s->icon_name, &s->icon_pms);
       if(s->icon_pms.pm == None) {
 	fprintf(stderr, "%s: Cannot load icon \"%s\".\n",

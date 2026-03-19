@@ -61,5 +61,7 @@ struct DrawInfo
 
 extern void term_dri(struct DrawInfo *, Display *, Colormap);
 extern void init_dri(struct DrawInfo *, Display *, Window, Colormap, int);
+extern Status myXAllocNamedColor(Display *dpy, Colormap cmap, char *color_name,
+                                 XColor *screen_def, XColor *exact_def);
 
 #endif

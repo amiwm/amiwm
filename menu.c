@@ -8,11 +8,13 @@
 #endif
 
 #include "alloc.h"
+#include "client.h"
 #include "drawinfo.h"
+#include "icon.h"
+#include "menu.h"
+#include "module.h"
 #include "prefs.h"
 #include "screen.h"
-#include "client.h"
-#include "icon.h"
 #include "version.h"
 
 #define ABOUT_STRING(LF) \
@@ -44,10 +46,7 @@ extern Cursor wm_curs;
 extern XContext screen_context, client_context;
 extern Client *activeclient;
 
-extern void select_all_icons(Scrn *i);
-extern void mod_menuselect(struct module *, int, int, int);
 extern void setfocus(Window);
-extern void flushmodules();
 extern void wberror(Scrn *, char *);
 
 Scrn *mbdclick=NULL, *mbdscr=NULL;
@@ -761,7 +760,6 @@ void menu_on()
 void menuaction(struct Item *i, struct Item *si)
 {
   extern void restart_amiwm(void);
-  extern int screen_has_clients(void);
   struct Menu *m;
   struct Item *mi;
   struct ToolItem *ti;
