@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <X11/Xlib.h>
+#include <X11/Xresource.h>
 #include <X11/Xutil.h>
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
