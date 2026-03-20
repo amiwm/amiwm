@@ -26,6 +26,7 @@
 #include "client.h"
 #include "diskobject.h"
 #include "drawinfo.h"
+#include "event.h"
 #include "frame.h"
 #include "icon.h"
 #include "menu.h"
