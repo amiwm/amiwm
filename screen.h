@@ -1,6 +1,7 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 
+#include "drawinfo.h"
 #include "icon.h"
 
 /*
