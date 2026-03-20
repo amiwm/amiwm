@@ -102,7 +102,7 @@ void restart_amiwm()
 }
 #endif
 
-int handler(Display *d, XErrorEvent *e)
+static int handler(Display *d, XErrorEvent *e)
 {
   if (initting && (e->request_code == X_ChangeWindowAttributes) &&
       (e->error_code == BadAccess)) {
