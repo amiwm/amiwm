@@ -43,8 +43,8 @@ extern void add_fd_to_set(int);
 extern void remove_fd_from_set(int);
 extern void wberror(Scrn *, char *);
 
+char *free_screentitle=NULL;
 struct module *modules = NULL;
-
 struct mcmd_keygrab *keygrabs = NULL;
 
 static struct mcmd_keygrab *find_keygrab(int keycode, unsigned int modifiers)
@@ -426,7 +426,6 @@ static void handle_module_cmd(struct module *m, char *data, int data_len)
     break;
   case MCMD_ERRORMSG:
     if(data_len>0) {
-      extern char *free_screentitle;
       if(free_screentitle) free(free_screentitle);
       free_screentitle=malloc(data_len+1);
       if(free_screentitle==NULL)

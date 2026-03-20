@@ -73,7 +73,6 @@ Window clickwindow=None;
 Scrn *menuactive=NULL;
 Bool shape_extn=False;
 char *x_server=NULL;
-char *free_screentitle=NULL;
 XContext client_context, screen_context, icon_context, menu_context, vroot_context;
 char *progname;
 Cursor wm_curs;
