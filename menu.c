@@ -751,7 +751,7 @@ void menu_on()
     XGrabPointer(dpy, scr->back, True, ButtonPressMask|ButtonReleaseMask|
 		EnterWindowMask|LeaveWindowMask, GrabModeAsync, GrabModeAsync,
 		scr->back, wm_curs, CurrentTime);
-    XSetInputFocus(dpy, scr->menubar, RevertToParent, CurrentTime);
+    XGrabKeyboard(dpy, scr->menubar, True, GrabModeAsync, GrabModeAsync, time);
     if(XQueryPointer(dpy, scr->menubarparent, &r, &c, &rx, &ry, &x, &y, &m))
       menubar_enter(c);
   }
@@ -894,6 +894,7 @@ void menu_off()
     Window r,p,*children;
     unsigned int nchildren;
     XUngrabPointer(dpy, CurrentTime);
+    XUngrabKeyboard(dpy, CurrentTime);
     setfocus((activeclient && activeclient->state==NormalState?
 	      activeclient->window:None));
     XUnmapWindow(dpy, scr->menubarparent);
