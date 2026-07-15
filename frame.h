@@ -1,11 +1,10 @@
 struct _Client;
 struct _Scrn;
 
-extern void clickenter(void);
-extern void clickleave(void);
-extern void gadgetaborted(struct _Client *c);
-extern void gadgetclicked(struct _Client *c, Window w, XEvent *e);
-extern void gadgetunclicked(struct _Client *c, XEvent *e);
+extern void click_close(struct _Client *c, Time time);
+extern void click_depth(struct _Client *c, Time time);
+extern void click_iconify(struct _Client *c, Time time);
+extern void click_zoom(struct _Client *c, Time time);
 extern void lowertopmostclient(struct _Scrn *scr);
 extern void raisebottommostclient(struct _Scrn *scr);
 extern void raiselowerclient(struct _Client *, int);
