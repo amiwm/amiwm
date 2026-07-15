@@ -839,7 +839,7 @@ int main(int argc, char *argv[])
     if(sc==DefaultScreen(dpy) || prefs.manage_all) {
       Window root = RootWindow(dpy, sc);
       checkwins[sc] = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, 1, 1);
-      setsupports(scr->root, checkwins[sc]);
+      setsupports(root, checkwins[sc]);
       if(!getscreenbyroot(root)) {
 	char buf[64];
 	sprintf(buf, "Screen.%d", sc);
