@@ -49,8 +49,6 @@ extern Client *activeclient;
 extern void setfocus(Window);
 extern void wberror(Scrn *, char *);
 
-Scrn *mbdclick=NULL, *mbdscr=NULL;
-
 static struct ToolItem {
   struct ToolItem *next;
   const char *name, *cmd;
@@ -518,7 +516,7 @@ void createmenubar()
  * This takes in the target window, which may be the basic menubar,
  * a clicked-on menu, or the depth widget.
  */
-void redrawmenubar(Scrn *scr, Window w)
+void redrawmenubar(Scrn *scr, Window w, Bool depthbtn_pressed)
 {
   static const char defaultTimeFormat[] = "%c";
   int widget_rhs;
@@ -593,7 +591,7 @@ void redrawmenubar(Scrn *scr, Window w)
     }
   } else if(w==scr->menubardepth) {
     /* Menubar depth widget */
-    if(!mbdclick) {
+    if(!depthbtn_pressed) {
       XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[SHADOWPEN]);
       XDrawRectangle(dpy, w, scr->menubargc, 4, scr->h2, 10, scr->h6-scr->h2);
     }
@@ -601,12 +599,12 @@ void redrawmenubar(Scrn *scr, Window w)
     XFillRectangle(dpy, w, scr->menubargc, 8, scr->h4, 10, scr->h8-scr->h4);
     XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[SHADOWPEN]);
     XDrawRectangle(dpy, w, scr->menubargc, 8, scr->h4, 10, scr->h8-scr->h4);
-    if(mbdclick)
+    if(depthbtn_pressed)
       XDrawRectangle(dpy, w, scr->menubargc, 4, scr->h2, 10, scr->h6-scr->h2);
-    XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[mbdclick?SHADOWPEN:SHINEPEN]);
+    XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[depthbtn_pressed?SHADOWPEN:SHINEPEN]);
     XDrawLine(dpy, w, scr->menubargc, 0, 0, 22, 0);
     XDrawLine(dpy, w, scr->menubargc, 0, 0, 0, scr->bh-2);
-    XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[mbdclick?SHINEPEN:SHADOWPEN]);
+    XSetForeground(dpy, scr->menubargc, scr->dri.dri_Pens[depthbtn_pressed?SHINEPEN:SHADOWPEN]);
     XDrawLine(dpy, w, scr->menubargc, 0, scr->bh-1, 22, scr->bh-1);
     XDrawLine(dpy, w, scr->menubargc, 22, 0, 22, scr->bh-1);
   } else {

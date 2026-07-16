@@ -70,7 +70,6 @@ typedef struct _DragIcon {
 
 Display *dpy = NULL;
 Client *activeclient=NULL;
-Window clickwindow=None;
 Scrn *menuactive=NULL;
 Bool shape_extn=False;
 char *x_server=NULL;
@@ -715,7 +714,7 @@ static void update_clock(void *dontcare)
 
   scr = get_front_scr();
   do {
-    redrawmenubar(scr, scr->menubar);
+    redrawmenubar(scr, scr->menubar, False);
     scr=scr->behind;
   } while(scr != get_front_scr());
 }
@@ -1154,7 +1153,7 @@ int main(int argc, char *argv[])
 	}
 	break;
       case ButtonPress:
-	if(clickwindow==None && event.xbutton.button==Button1 && !menuactive) {
+	if(event.xbutton.button==Button1 && !menuactive) {
 	  if(c) {
 	    if((!c->active) && prefs.focus==FOC_CLICKTOTYPE &&
 	       (c->state==NormalState)) {
@@ -1213,9 +1212,7 @@ int main(int argc, char *argv[])
               drag_icon(i->scr, event.xbutton.time, event.xbutton.x_root, event.xbutton.y_root);
 	    }
 	  } else if(scr&&event.xbutton.window==scr->menubardepth) {
-	    clickwindow=scr->menubardepth;
-	    mbdclick=mbdscr=scr;
-	    redrawmenubar(scr, scr->menubardepth);
+	    click_screendepth(scr, event.xbutton.time);
 	  } else if(scr&&event.xbutton.window==scr->menubar &&
 		    scr->back!=scr->root) {
 	    drag_screen(scr, event.xbutton.time, event.xbutton.x_root, event.xbutton.y_root);
@@ -1226,11 +1223,7 @@ int main(int argc, char *argv[])
                           event.xbutton.x, event.xbutton.y);
 	  } else ;
 	} else if(event.xbutton.button==3) {
-	  if(scr&&(scr==mbdscr)&&clickwindow==scr->menubardepth) {
-	    mbdclick=NULL;
-	    clickwindow=None;
-	    redrawmenubar(scr, scr->menubardepth);
-	  } else if(scr&&!menuactive) {
+	  if(scr&&!menuactive) {
 	    menu_on();
 	    menuactive=scr;
 	  }
@@ -1242,16 +1235,7 @@ int main(int argc, char *argv[])
 	}
 	break;
       case ButtonRelease:
-	if(event.xbutton.button==Button1) {
-	  if((scr=mbdscr)&& clickwindow==scr->menubardepth) {
-	    if(mbdclick) {
-	      mbdclick=NULL;
-	      redrawmenubar(scr, scr->menubardepth);
-	      screentoback();
-	    }
-	    clickwindow=None;
-	  }
-	} else if(event.xbutton.button==Button3 && (scr=menuactive)) {
+	if(event.xbutton.button==Button3 && (scr=menuactive)) {
 	  menu_off();
 	  menuactive=NULL;
 	}

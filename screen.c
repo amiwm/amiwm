@@ -4,6 +4,7 @@
 
 #include "client.h"
 #include "drawinfo.h"
+#include "events.h"
 #include "frame.h"
 #include "icc.h"
 #include "icon.h"
@@ -416,4 +417,34 @@ Scrn *getscreenbyrootext(Window w, int include_fs)
 Scrn *getscreenbyroot(Window w)
 {
   return getscreenbyrootext(w, 0);
+}
+
+void click_screendepth(Scrn *s, Time time)
+{
+  int status;
+
+  XSync(dpy, False);
+  status = XGrabPointer(dpy, s->menubardepth, True, ButtonPressMask|ButtonReleaseMask,
+                        GrabModeAsync, GrabModeAsync, False, None, time);
+  if (status != AlreadyGrabbed && status != GrabSuccess)
+    return;
+  redrawmenubar(s, s->menubardepth, True);
+  for (;;) {
+    XEvent event;
+
+    get_drag_event(&event);
+    if (event.type == ButtonRelease || event.type == ButtonPress) {
+      redrawmenubar(s, s->menubardepth, False);
+      XUngrabPointer(dpy, event.xbutton.time);
+      if (event.type == ButtonPress)
+        return;
+      if (event.xbutton.x < 0 || event.xbutton.y < 0)
+        return;   /* pointer to left/top of button */
+      if (event.xbutton.x >= 23 || event.xbutton.y >= s->bh)
+        return;   /* pointer to right/bottom of button */
+      if(event.xbutton.window == s->menubardepth)
+        screentoback();
+      return;
+    }
+  }
 }

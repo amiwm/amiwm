@@ -43,7 +43,7 @@ static void restorescreentitle(Scrn *s)
 {
   (scr=s)->title=s->deftitle;
   XClearWindow(dpy, s->menubar);
-  redrawmenubar(s, s->menubar);
+  redrawmenubar(s, s->menubar, False);
   if(free_screentitle) {
     free(free_screentitle);
     free_screentitle=NULL;
@@ -97,7 +97,7 @@ static Bool filter_event(XEvent *event)
     else if (!XFindContext(dpy, event->xexpose.window, icon_context, (XPointer*)&i))
       redrawicon(i, event->xexpose.window);
     else if (!XFindContext(dpy, event->xexpose.window, screen_context, (XPointer*)&s))
-      redrawmenubar(s, event->xexpose.window);
+      redrawmenubar(s, event->xexpose.window, False);
     return True;
   case KeyPress:
     if(!dispatch_event_to_broker(event, KeyPressMask, modules))
@@ -193,7 +193,7 @@ void wberror(Scrn *s, char *message)
   remove_call_out((void(*)(void *))restorescreentitle, s);
   (scr=s)->title=message;
   XClearWindow(dpy, s->menubar);
-  redrawmenubar(s, s->menubar);
+  redrawmenubar(s, s->menubar, False);
   XBell(dpy, 100);
   call_out(2, 0, (void(*)(void *))restorescreentitle, s);
 }
