@@ -77,11 +77,8 @@ char *progname;
 Cursor wm_curs;
 
 static int signalled=0, forcemoving=0;
-static Time last_icon_click=0, last_double=0;
-static Client *doubleclient=NULL;
 static int initting=0;
 static int ignore_badwindow=0;
-static int dblClickTime=1500;
 static Window *checkwins;
 static int shape_event_base, shape_error_base;
 static int server_grabs=0;
@@ -645,6 +642,15 @@ static void do_icon_double_click(Scrn *scr)
   }
 }
 
+static Bool is_double_click(XButtonEvent *prev, XButtonEvent *curr)
+{
+  static const int DOUBLE_CLICK_TIME = 500;
+
+  return curr->time - prev->time < DOUBLE_CLICK_TIME &&
+         curr->button == prev->button &&
+         curr->window == prev->window;
+}
+
 static void abortfocus()
 {
   if(activeclient) {
@@ -865,6 +871,7 @@ int main(int argc, char *argv[])
     Window dummy_root;
     int dummy_x, dummy_y;
     unsigned int dummy_w, dummy_h, dummy_bw, dummy_d;
+    static XButtonEvent last_press = {0};
 
     while((!signalled) && QLength(dpy)>0) {
       Client *c; Icon *i;
@@ -1163,12 +1170,8 @@ int main(int argc, char *argv[])
 	    }
 	    if(event.xbutton.window!=c->depth &&
 	       event.xbutton.window!=c->window) {
-	      if(c==doubleclient && (event.xbutton.time-last_double)<
-		 dblClickTime) {
+	      if(is_double_click(&last_press, &event.xbutton)) {
 		XRaiseWindow(dpy, c->parent);
-	      } else {
-		doubleclient=c;
-		last_double=event.xbutton.time;
 	      }
 	    }
 	    if(event.xbutton.window==c->drag) {
@@ -1191,12 +1194,11 @@ int main(int argc, char *argv[])
             }
 	  } else if(i && event.xbutton.window==i->window) {
 	    abortfocus();
-	    if(i->selected && (event.xbutton.time-last_icon_click)<dblClickTime) {
+	    if(i->selected && is_double_click(&last_press, &event.xbutton)) {
 	      do_icon_double_click(i->scr);
 	    } else {
 	      if(!(event.xbutton.state & ShiftMask))
 		deselect_all_icons(i->scr);
-	      last_icon_click=event.xbutton.time;
 	      selecticon(i);
               drag_icon(i->scr, event.xbutton.time, event.xbutton.x_root, event.xbutton.y_root);
 	    }
@@ -1219,6 +1221,7 @@ int main(int argc, char *argv[])
 	  XAllowEvents(dpy,ReplayPointer,CurrentTime);
 	  XSync(dpy,0);
 	}
+	last_press = event.xbutton;
 	break;
       case ButtonRelease:
       case MotionNotify:
