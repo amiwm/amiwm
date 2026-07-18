@@ -70,7 +70,6 @@ typedef struct _DragIcon {
 
 Display *dpy = NULL;
 Client *activeclient=NULL;
-Scrn *menuactive=NULL;
 Bool shape_extn=False;
 char *x_server=NULL;
 XContext client_context, screen_context, icon_context, menu_context, vroot_context;
@@ -935,8 +934,6 @@ int main(int argc, char *argv[])
 	    XGrabButton(dpy, Button1, AnyModifier, c->parent, True,
 			ButtonPressMask, GrabModeSync, GrabModeAsync,
 			None, wm_curs);
-	  if(!menuactive)
-	    setfocus(None);
 	}
 	if(c && (event.xunmap.window==c->window)) {
 	  if((!c->reparenting) && c->parent != c->scr->root) {
@@ -1111,10 +1108,7 @@ int main(int argc, char *argv[])
 	}
 	break;
       case EnterNotify:
-	if(menuactive) {
-	  scr=menuactive;
-	  menubar_enter(event.xcrossing.window);
-	} else if(c) {
+	if(c) {
 	  if((!c->active) && (c->state==NormalState) &&
 	     prefs.focus!=FOC_CLICKTOTYPE) {
 	    if(activeclient) {
@@ -1133,15 +1127,10 @@ int main(int argc, char *argv[])
 	}
 	break;
       case LeaveNotify:
-	if(menuactive) {
-	  scr=menuactive;
-	  menubar_leave(event.xcrossing.window);
-	} else if(c) {
+	if(c) {
 	  if(c->active && event.xcrossing.window==c->parent &&
 	     event.xcrossing.detail!=NotifyInferior &&
 	     prefs.focus == FOC_FOLLOWMOUSE) {
-	    if(!menuactive)
-	      setfocus(None);
 	    c->active=False;
 	    activeclient = NULL;
 	    instcmap(None);
@@ -1153,7 +1142,7 @@ int main(int argc, char *argv[])
 	}
 	break;
       case ButtonPress:
-	if(event.xbutton.button==Button1 && !menuactive) {
+	if(event.xbutton.button==Button1) {
 	  if(c) {
 	    if((!c->active) && prefs.focus==FOC_CLICKTOTYPE &&
 	       (c->state==NormalState)) {
@@ -1222,24 +1211,16 @@ int main(int argc, char *argv[])
                           event.xbutton.x_root, event.xbutton.y_root,
                           event.xbutton.x, event.xbutton.y);
 	  } else ;
-	} else if(event.xbutton.button==3) {
-	  if(scr&&!menuactive) {
-	    menu_on();
-	    menuactive=scr;
-	  }
+	} else if(event.xbutton.button==3 && c == NULL && scr != NULL) {
+          drag_menu(scr, event.xbutton.time);
 	}
-	if(prefs.focus == FOC_CLICKTOTYPE && !menuactive) {
+	if(prefs.focus == FOC_CLICKTOTYPE) {
 	  XSync(dpy,0);
 	  XAllowEvents(dpy,ReplayPointer,CurrentTime);
 	  XSync(dpy,0);
 	}
 	break;
       case ButtonRelease:
-	if(event.xbutton.button==Button3 && (scr=menuactive)) {
-	  menu_off();
-	  menuactive=NULL;
-	}
-	break;
       case MotionNotify:
       case KeyPress:
       case KeyRelease:
