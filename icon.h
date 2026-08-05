@@ -1,14 +1,18 @@
 #ifndef ICON_H
 #define ICON_H
 
-#include "client.h"
+#include <X11/Xutil.h>
+
 #include "libami.h"
 
 struct _Scrn;
+struct _Client;
+struct module;
+
 typedef struct _Icon {
   struct _Icon *next, *nextselected;
   struct _Scrn *scr;
-  Client *client;
+  struct _Client *client;
   struct module *module;
   Window parent, window, labelwin, innerwin;
   Pixmap iconpm, secondpm, maskpm;
@@ -28,18 +32,24 @@ struct IconPixmaps
   struct ColorStore cs, cs2;
 };
 
-extern void redrawicon(Icon *, Window);
-extern void rmicon(Icon *);
-extern void createicon(Client *);
-extern void createiconicon(Icon *i, XWMHints *);
-extern void destroyiconicon(Icon *);
-extern void cleanupicons();
-extern void createdefaulticons();
 extern void adjusticon(Icon *);
-extern void selecticon(Icon *);
-extern void deselecticon(Icon *);
-extern void free_icon_pms(struct IconPixmaps *pms);
-extern void iconify(Client *);
+extern void cleanupicons(void);
+extern void createdefaulticons(void);
+extern void createicon(struct _Client *);
+extern void createiconicon(Icon *i, XWMHints *);
 extern void deiconify(Icon *);
+extern void deselect_all_icons(struct _Scrn *);
+extern void deselecticon(Icon *);
+extern void destroyiconicon(Icon *);
+extern void free_icon_pms(struct IconPixmaps *pms);
+extern void iconify(struct _Client *);
+extern void newicontitle(struct _Client *);
+extern void redrawicon(Icon *, Window);
+extern void reparenticon(Icon *, struct _Scrn *, int, int);
+extern void rmicon(Icon *);
+extern void select_all_icons(struct _Scrn *i);
+extern void selecticon(Icon *);
+extern Icon *createappicon(struct module *m, Window p, char *name,
+                           Pixmap pm1, Pixmap pm2, Pixmap pmm, int x, int y);
 
 #endif

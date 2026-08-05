@@ -1,6 +1,7 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 
+#include "drawinfo.h"
 #include "icon.h"
 
 /*
@@ -39,17 +40,15 @@ typedef struct _Scrn {
 
 extern Scrn *scr;
 
-Scrn * get_front_scr(void);
-void set_front_scr(Scrn *s);
-
-extern void closescreen();
-extern Scrn * openscreen(char *, Window);
-extern void realizescreens();
-extern void screentoback();
-
-void closescreen();
-Scrn *openscreen(char *deftitle, Window root);
-void realizescreens();
-void screentoback();
+extern void assimilate(Window, int, int);
+extern Scrn *get_front_scr(void);
+extern Scrn *getscreenbyroot(Window);
+extern Scrn *getscreen(Window);
+extern Scrn *openscreen(char *, Window);
+extern Scrn *openscreen(char *deftitle, Window root);
+extern void closescreen(void);
+extern void realizescreens(void);
+extern void screentoback(void);
+extern void set_front_scr(Scrn *s);
 
 #endif

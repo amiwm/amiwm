@@ -4,12 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "drawinfo.h"
-#include "screen.h"
-#include "icon.h"
 #include "client.h"
+#include "drawinfo.h"
 #include "icc.h"
+#include "icon.h"
 #include "prefs.h"
+#include "screen.h"
 
 #ifdef AMIGAOS
 #include <pragmas/xlib_pragmas.h>
@@ -220,8 +220,6 @@ void getstate(Client *c)
 
 Client *createclient(Window w)
 {
-  extern void checkstyle(Client *c);
-
   XWindowAttributes attr;
   Client *c;
   int b = 0;

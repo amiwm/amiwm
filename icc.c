@@ -1,11 +1,13 @@
 #include <X11/Xatom.h>
 
+#include "client.h"
 #include "drawinfo.h"
-#include "screen.h"
+#include "frame.h"
 #include "icc.h"
 #include "icon.h"
-#include "style.h"
 #include "prefs.h"
+#include "screen.h"
+#include "style.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -15,8 +17,6 @@
 #include <pragmas/xlib_pragmas.h>
 extern struct Library *XLibBase;
 #endif
-
-extern void redraw(Client *, Window);
 
 Atom ATOMS[NATOMS];
 
@@ -214,9 +214,6 @@ void checkstyle(Client *c)
 
 void propertychange(Client *c, Atom a)
 {
-  extern void checksizehints(Client *);
-  extern void newicontitle(Client *);
-
   if(a==XA_WM_NAME) {
 #ifdef USE_FONTSETS
     XTextProperty prop;
