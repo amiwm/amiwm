@@ -38,6 +38,7 @@
 
 #include "client.h"
 #include "drawinfo.h"
+#include "events.h"
 #include "frame.h"
 #include "icc.h"
 #include "icon.h"
@@ -73,7 +74,6 @@ Window clickwindow=None;
 Scrn *menuactive=NULL;
 Bool shape_extn=False;
 char *x_server=NULL;
-char *free_screentitle=NULL;
 XContext client_context, screen_context, icon_context, menu_context, vroot_context;
 char *progname;
 Cursor wm_curs;
@@ -84,8 +84,6 @@ static Client *doubleclient=NULL;
 static int initting=0;
 static int ignore_badwindow=0;
 static int dblClickTime=1500;
-static fd_set master_fd_set;
-static int max_fd=0;
 static Window *checkwins;
 static int shape_event_base, shape_error_base;
 static int server_grabs=0;
@@ -103,7 +101,7 @@ void restart_amiwm()
 }
 #endif
 
-int handler(Display *d, XErrorEvent *e)
+static int handler(Display *d, XErrorEvent *e)
 {
   if (initting && (e->request_code == X_ChangeWindowAttributes) &&
       (e->error_code == BadAccess)) {
@@ -132,93 +130,6 @@ int handler(Display *d, XErrorEvent *e)
     exit(1);
   }
   return 0;
-}
-
-static struct coevent {
-  struct coevent *next;
-  struct timeval when;
-  void (*what)(void *);
-  void *with;
-} *eventlist=NULL;
-
-#define FIXUPTV(tv) { \
-    while((tv).tv_usec<0) { (tv).tv_usec+=1000000; (tv).tv_sec--; } \
-    while((tv).tv_usec>=1000000) { (tv).tv_usec-=1000000; (tv).tv_sec++; } \
-}
-
-static void remove_call_out(void (*what)(void *), void *with)
-{
-  struct coevent *ee, **e=&eventlist;
-
-  while(*e && ((*e)->what != what || (*e)->with != with))
-    e=&(*e)->next;
-  if((ee=*e)) {
-    *e=(*e)->next;
-    free(ee);
-  }
-}
-
-#ifdef BSD_STYLE_GETTIMEOFDAY
-#define GETTIMEOFDAY(tp) gettimeofday(tp, NULL)
-#else
-#define GETTIMEOFDAY(tp) gettimeofday(tp)
-#endif
-
-static void call_out(int howlong_s, int howlong_u, void (*what)(void *), void *with)
-{
-  struct coevent *ce=malloc(sizeof(struct coevent));
-  if(ce) {
-    struct coevent **e=&eventlist;
-    GETTIMEOFDAY(&ce->when);
-    ce->when.tv_sec+=howlong_s;
-    ce->when.tv_usec+=howlong_u;
-    FIXUPTV(ce->when);
-    ce->what=what;
-    ce->with=with;
-    while(*e && ((*e)->when.tv_sec<ce->when.tv_sec ||
-		 ((*e)->when.tv_sec==ce->when.tv_sec &&
-		  (*e)->when.tv_usec<=ce->when.tv_usec)))
-      e=&(*e)->next;
-    ce->next=*e;
-    *e=ce;
-  }
-}
-
-static void call_call_out()
-{
-  struct timeval now;
-  struct coevent *e;
-  GETTIMEOFDAY(&now);
-  FIXUPTV(now);
-  while((e=eventlist) && (e->when.tv_sec<now.tv_sec ||
-			  (e->when.tv_sec==now.tv_sec &&
-			   e->when.tv_usec<=now.tv_usec))) {
-    eventlist=e->next;
-    (e->what)(e->with);
-    free(e);
-  }
-}
-
-static void fill_in_call_out(struct timeval *tv)
-{
-  GETTIMEOFDAY(tv);
-  tv->tv_sec=eventlist->when.tv_sec-tv->tv_sec;
-  tv->tv_usec=eventlist->when.tv_usec-tv->tv_usec;
-  FIXUPTV(*tv);
-  if(tv->tv_sec<0)
-    tv->tv_sec = tv->tv_usec = 0;
-}
-
-void add_fd_to_set(int fd)
-{
-  FD_SET(fd, &master_fd_set);
-  if(fd>=max_fd)
-    max_fd=fd+1;
-}
-
-void remove_fd_from_set(int fd)
-{
-  FD_CLR(fd, &master_fd_set);
 }
 
 static void lookup_keysyms(Display *dpy, unsigned int *meta_mask,
@@ -256,28 +167,6 @@ static void lookup_keysyms(Display *dpy, unsigned int *meta_mask,
 		 (*switch_mask? *switch_mask : Mod1Mask));
 }
 
-
-static void restorescreentitle(Scrn *s)
-{
-  (scr=s)->title=s->deftitle;
-  XClearWindow(dpy, s->menubar);
-  redrawmenubar(s, s->menubar);
-  if(free_screentitle) {
-    free(free_screentitle);
-    free_screentitle=NULL;
-  }
-}
-
-void wberror(Scrn *s, char *message)
-{
-  remove_call_out((void(*)(void *))restorescreentitle, s);
-  (scr=s)->title=message;
-  XClearWindow(dpy, s->menubar);
-  redrawmenubar(s, s->menubar);
-  XBell(dpy, 100);
-  call_out(2, 0, (void(*)(void *))restorescreentitle, s);
-}
-
 void setfocus(Window w)
 {
   if(w == None && prefs.focus != FOC_CLICKTOTYPE)
@@ -300,102 +189,6 @@ static void ungrab_server()
     if(prefs.titlebarclock) {
       remove_call_out(update_clock, NULL);
       update_clock(NULL);
-    }
-  }
-}
-
-static void compress_motion(XEvent *event)
-{
-  if (event->type != MotionNotify)
-    return;
-  while (XCheckTypedWindowEvent(dpy, event->xmotion.window, MotionNotify, event))
-    ;
-}
-
-static Bool grab_for_motion(Window w, Window confine, Cursor curs, Time time, int x_root, int y_root)
-{
-  /*
-   * To avoid misclicks, only grab for move/resize/etc, if the user has
-   * moved the pointer by a given threshold.
-   */
-  static const int THRESHOLD = 5;
-  int status;
-
-  XSync(dpy, False);
-  status = XGrabPointer(dpy, w, False,
-                        ButtonPressMask|ButtonReleaseMask|Button1MotionMask,
-                        GrabModeAsync, GrabModeAsync, confine, None, time);
-  if (status == AlreadyGrabbed || status == GrabSuccess) {
-    for (;;) {
-      XEvent event;
-      int dx, dy;
-
-      XMaskEvent(dpy, ButtonPressMask|ButtonReleaseMask|Button1MotionMask, &event);
-      XPutBackEvent(dpy, &event);
-      if (event.type != MotionNotify)
-        break;
-      compress_motion(&event);
-      dx = x_root - event.xmotion.x_root;
-      dy = y_root - event.xmotion.y_root;
-      if (dx*dx + dy*dy > THRESHOLD*THRESHOLD) /* Pythagoras! */
-        return True;
-    }
-  }
-  XUngrabPointer(dpy, CurrentTime);
-  return False;
-}
-
-static void get_drag_event(XEvent *event)
-{
-  static const unsigned int DRAG_MASK = ButtonPressMask|ButtonReleaseMask|Button1MotionMask;
-
-  for (;;) {
-    fd_set rfds = master_fd_set;
-    struct timeval t = {
-      .tv_sec = 0,
-      .tv_usec = 0,
-    };
-
-    while (XCheckMaskEvent(dpy, ExposureMask|DRAG_MASK, event)) {
-      Client *c = NULL;
-      Icon *i = NULL;
-      Scrn *s = NULL;
-
-      if (event->type == MotionNotify)
-        compress_motion(event);
-      if (event->type != Expose)
-        return;
-      if (event->xexpose.count)
-        continue;
-      else if (!XFindContext(dpy, event->xexpose.window, client_context, (XPointer*)&c))
-        redraw(c, event->xexpose.window);
-      else if (!XFindContext(dpy, event->xexpose.window, icon_context, (XPointer*)&i))
-        redrawicon(i, event->xexpose.window);
-      else if (!XFindContext(dpy, event->xexpose.window, screen_context, (XPointer*)&s))
-        redrawmenubar(s, event->xexpose.window);
-      continue;
-    }
-
-    if (select(max_fd, &rfds, NULL, NULL, &t) > 0) {
-      handle_module_input(&rfds);
-      if(FD_ISSET(ConnectionNumber(dpy), &rfds))
-        XFlush(dpy);
-      continue;
-    }
-    XFlush(dpy);
-    rfds = master_fd_set;
-    if(eventlist)
-      fill_in_call_out(&t);
-    if(select(max_fd, &rfds, NULL, NULL, (eventlist? &t:NULL))<0) {
-      if (errno != EINTR) {
-        perror("select");
-        break;
-      }
-    } else {
-      call_call_out();
-      handle_module_input(&rfds);
-      if(FD_ISSET(ConnectionNumber(dpy), &rfds))
-        XFlush(dpy);
     }
   }
 }
@@ -1046,7 +839,7 @@ int main(int argc, char *argv[])
     if(sc==DefaultScreen(dpy) || prefs.manage_all) {
       Window root = RootWindow(dpy, sc);
       checkwins[sc] = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 1, 1, 1);
-      setsupports(scr->root, checkwins[sc]);
+      setsupports(root, checkwins[sc]);
       if(!getscreenbyroot(root)) {
 	char buf[64];
 	sprintf(buf, "Screen.%d", sc);
@@ -1078,7 +871,7 @@ int main(int argc, char *argv[])
     while((!signalled) && QLength(dpy)>0) {
       Client *c; Icon *i;
 
-      XNextEvent(dpy, &event);
+      get_next_event(&event);
       if(!XFindContext(dpy, event.xany.window, client_context,
 		       (XPointer*)&c)) {
 	scr=c->scr;
@@ -1094,14 +887,6 @@ int main(int argc, char *argv[])
 	scr=i->scr;
       switch(event.type) {
       case Expose:
-	if(!event.xexpose.count) {
-	  if(c)
-	    redraw(c, event.xexpose.window);
-	  else if(i)
-	    redrawicon(i, event.xexpose.window);
-	  else if(scr)
-	    redrawmenubar(scr, event.xexpose.window);
-	}
 	break;
       case CreateNotify:
 
@@ -1473,18 +1258,9 @@ int main(int argc, char *argv[])
 	}
 	break;
       case MotionNotify:
-	break;
       case KeyPress:
-	if(!dispatch_event_to_broker(&event, KeyPressMask, modules))
-	  internal_broker(&event);
-	break;
       case KeyRelease:
-	if(!dispatch_event_to_broker(&event, KeyPressMask, modules))
-	  internal_broker(&event);
-	break;
       case MappingNotify:
-	if(!dispatch_event_to_broker(&event, 0, modules))
-	  internal_broker(&event);
 	break;
       case PropertyNotify:
 	if(event.xproperty.atom != None && c &&
