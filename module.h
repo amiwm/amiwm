@@ -87,3 +87,5 @@ extern void flushmodules(void);
 extern void handle_module_input(fd_set *);
 extern void init_modules(void);
 extern void mod_menuselect(struct module *, int, int, int);
+
+extern char *free_screentitle;
