@@ -1,0 +1,15 @@
+#!/bin/sh
+
+GEOM=$(xwininfo -root | sed -n 's/.*-geometry //p' | sed 's/+0+0//')
+BG=$(magick "$4" -quiet -format '%[pixel:p{0,0}]' info:)
+
+TMP=$(mktemp --suffix=.png)
+magick "$4" -background "$BG" -gravity center -extent "$GEOM" "$TMP"
+
+if [ "$3" = "0x00000000" ]; then
+  display -window root "$TMP" >/dev/null
+else
+  display -window "$3" "$TMP" >/dev/null
+fi
+
+rm $TMP
