@@ -107,15 +107,15 @@ install: $(PROGS) $(MODULES) system.amiwmrc Xsession Xsession2 Xinitrc amiwm-ini
 	      $(INSTALL) $$module $(DESTDIR)$(AMIWM_MODULES)/Background_resize; \
 	    else \
 	      if [ "$$module" = "Background_stretch" ]; then \
-	        $(INSTALL) $$module $(DESTDIR)$(AMIWM_MODULES)/Background_stretch; \
+		$(INSTALL) $$module $(DESTDIR)$(AMIWM_MODULES)/Background_stretch; \
 	      else \
-                if [ "$$module" = "Background_center" ]; then \
+		if [ "$$module" = "Background_center" ]; then \
                   $(INSTALL) $$module $(DESTDIR)$(AMIWM_MODULES)/Background_center; \
-	        else \
+		else \
 		  if [ "$$module" = "def_tool.info" ]; then \
-		      $(INSTALL) $$module $(DESTDIR)$(AMIWM_MODULES)/def_tool.info; \
+		    $(INSTALL) $$module $(DESTDIR)$(AMIWM_MODULES)/def_tool.info; \
 		  else \
-		      $(INSTALL) $(STRIPFLAG) $$module $(DESTDIR)$(AMIWM_MODULES)/$$module; \
+		    $(INSTALL) $(STRIPFLAG) $$module $(DESTDIR)$(AMIWM_MODULES)/$$module; \
 		  fi; \
 		fi; \
 	      fi; \
