@@ -453,6 +453,13 @@ For example, if you've got a 16:9 screen but your backdrop image is 4:3,
 it will get stretched, but it will still be displayed as a 4:3 picture.
 The remaining part of the screen will be used to show the same image, but repeated.
 .
+.Ss Background_center module
+Same as
+.Ic Background ,
+but it pads out the corners of the image with a background color to fill your monitor.
+The padding color is sampled from the top-left corner of your image. The contents of the
+original image are not scaled.
+.
 .Ss Keyboard module
 This module binds window manager functions to keys on the keyboard.
 .
