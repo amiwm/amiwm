@@ -4,7 +4,7 @@ SHELL = /bin/sh
 CC = @CC@
 LEX = @LEX@
 YACC = @YACC@
-CFLAGS = @CFLAGS@
+CFLAGS = @CFLAGS@ --std=gnu99
 LDFLAGS = @LDFLAGS@
 DEFS = @DEFS@
 ALL_CFLAGS = -Wall -I. -I@srcdir@ -I@srcdir@/libami $(DEFS) $(CFLAGS) @X_CFLAGS@
@@ -25,7 +25,7 @@ STRIPFLAG = -s
 PROGS = amiwm requestchoice executecmd ppmtoinfo config_util
 
 MODULES = Background Keyboard Background_resize Background_stretch \
-	    def_tool.info Filesystem Launcher
+	    Background_center def_tool.info Filesystem Launcher
 
 OBJS  = main.o screen.o client.o frame.o icc.o \
 		icon.o menu.o diskobject.o gram.tab.o lex.o rc.o \
@@ -41,7 +41,7 @@ DISTFILES = README.md MODULES.md INSTALL LICENSE amiwm.1 \
 	configure configure.ac Makefile.in install-sh \
 	*.[chly] system.amiwmrc.in def_*.info *.map \
 	Background Background_resize Background_resize_norepeat \
-	Background_stretch Launcher Xresources.amiwm.in Amilogo.?m \
+	Background_stretch Background_center Launcher Xresources.amiwm.in Amilogo.?m \
 	Xsession*.in Xinitrc.in amiwm-init libami/Makefile.in libami/*.[chly] \
 
 PACKAGENAME = amiwm
@@ -107,12 +107,16 @@ install: $(PROGS) $(MODULES) system.amiwmrc Xsession Xsession2 Xinitrc amiwm-ini
 	      $(INSTALL) $$module $(DESTDIR)$(AMIWM_MODULES)/Background_resize; \
 	    else \
 	      if [ "$$module" = "Background_stretch" ]; then \
-	        $(INSTALL) $$module $(DESTDIR)$(AMIWM_MODULES)/Background_stretch; \
+		$(INSTALL) $$module $(DESTDIR)$(AMIWM_MODULES)/Background_stretch; \
 	      else \
-		if [ "$$module" = "def_tool.info" ]; then \
-		    $(INSTALL) $$module $(DESTDIR)$(AMIWM_MODULES)/def_tool.info; \
+		if [ "$$module" = "Background_center" ]; then \
+                  $(INSTALL) $$module $(DESTDIR)$(AMIWM_MODULES)/Background_center; \
 		else \
+		  if [ "$$module" = "def_tool.info" ]; then \
+		    $(INSTALL) $$module $(DESTDIR)$(AMIWM_MODULES)/def_tool.info; \
+		  else \
 		    $(INSTALL) $(STRIPFLAG) $$module $(DESTDIR)$(AMIWM_MODULES)/$$module; \
+		  fi; \
 		fi; \
 	      fi; \
 	    fi; \
