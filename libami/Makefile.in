@@ -5,7 +5,7 @@ CC = @CC@
 LEX = @LEX@
 YACC = @YACC@
 RANLIB = @RANLIB@
-CFLAGS = @CFLAGS@
+CFLAGS = @CFLAGS@ --std=gnu89
 LDFLAGS = @LDFLAGS@
 DEFS = @DEFS@
 ALL_CFLAGS = -Wall -I@srcdir@ -I@top_srcdir@ $(DEFS) $(CFLAGS) @X_CFLAGS@
